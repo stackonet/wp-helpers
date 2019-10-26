@@ -18,7 +18,7 @@ class Sanitize {
 	 * @return integer|double|string
 	 */
 	public static function number( $value ) {
-		return ( is_numeric( $value ) ) ? $value : intval( $value );
+		return is_numeric( $value ) ? $value : intval( $value );
 	}
 
 	/**
@@ -46,7 +46,7 @@ class Sanitize {
 	/**
 	 * Sanitize email
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
@@ -57,12 +57,12 @@ class Sanitize {
 	/**
 	 * Sanitize url
 	 *
-	 * @param  mixed $value
+	 * @param string $value
 	 *
 	 * @return string
 	 */
 	public static function url( $value ) {
-		return esc_url_raw( $value );
+		return esc_url_raw( trim( $value ) );
 	}
 
 	/**
@@ -74,7 +74,7 @@ class Sanitize {
 	 * - Removes line breaks, tabs, and extra whitespace
 	 * - Strips octets
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
@@ -89,12 +89,12 @@ class Sanitize {
 	 * new lines (\n) and other whitespace, which are legitimate
 	 * input in textarea elements.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
 	public static function textarea( $value ) {
-		return _sanitize_text_fields( $value, true );
+		return sanitize_textarea_field( $value );
 	}
 
 	/**
@@ -102,12 +102,29 @@ class Sanitize {
 	 * one of the following values: 'yes', 'on', '1', 1, true, or 'true'.
 	 * This can be used for determining if an HTML checkbox has been checked.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return boolean
 	 */
 	public static function checked( $value ) {
 		return in_array( $value, array( 'yes', 'on', '1', 1, true, 'true' ), true );
+	}
+
+	/**
+	 * Check if the given input is a valid date.
+	 *
+	 * @param string $value
+	 *
+	 * @return boolean
+	 */
+	public static function date( $value ) {
+		$time = strtotime( $value );
+
+		if ( $time ) {
+			return date( 'Y-m-d', $time );
+		}
+
+		return '';
 	}
 
 	/**
