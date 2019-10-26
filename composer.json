@@ -33,5 +33,5 @@
 			"Stackonet\\WP\\Framework\\": "src/"
 		}
 	},
-	"minimum-stability": "dev"
+	"minimum-stability": "stable"
 }
