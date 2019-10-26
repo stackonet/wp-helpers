@@ -32,5 +32,5 @@
 		"psr-4": {
 			"Stackonet\\WP\\Framework\\": "src/"
 		}
-	},
+	}
 }
