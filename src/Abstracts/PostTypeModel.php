@@ -4,7 +4,7 @@ namespace Stackonet\WP\Framework\Abstracts;
 
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
 
-class PostTypeModel extends AbstractModel implements DataStoreInterface {
+class PostTypeModel extends Data implements DataStoreInterface {
 
 	/**
 	 * Post type name
