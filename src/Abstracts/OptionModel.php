@@ -2,63 +2,38 @@
 
 namespace Stackonet\WP\Framework\Abstracts;
 
-use Stackonet\WP\Framework\Interfaces\OptionStoreInterface;
-
 defined( 'ABSPATH' ) || exit;
 
-abstract class OptionModel extends AbstractModel implements OptionStoreInterface {
+/**
+ * Class OptionModel
+ * @package Stackonet\WP\Framework\Abstracts
+ */
+class OptionModel {
 
 	/**
 	 * @var string
 	 */
-	protected static $option_name;
+	protected $option_name;
 
 	/**
-	 * Prepare item for response
-	 *
-	 * @param array $item
-	 *
-	 * @return array
+	 * @var string
 	 */
-	abstract public function prepare_item_for_response( array $item );
+	protected $primaryKey = 'id';
 
 	/**
-	 * Prepare item for database
-	 *
-	 * @param array $data
-	 *
-	 * @return array
+	 * @var array
 	 */
-	abstract public function prepare_item_for_database( array $data );
+	protected $default_data = [];
 
 	/**
 	 * Get options
 	 *
 	 * @return array
 	 */
-	protected static function get_options() {
-		$option = get_option( self::$option_name );
+	public function get_options() {
+		$option = get_option( $this->option_name );
 
 		return is_array( $option ) ? $option : [];
-	}
-
-	/**
-	 * Method to create a new record
-	 *
-	 * @param array $data
-	 *
-	 * @return mixed
-	 */
-	public function create( array $data ) {
-		$data                      = wp_parse_args( $data, $this->default_data );
-		$data[ $this->primaryKey ] = uniqid();
-
-		$options       = self::get_options();
-		$sanitize_data = $this->prepare_item_for_database( $data );
-		$options[]     = $sanitize_data;
-		update_option( self::$option_name, $options );
-
-		return $data;
 	}
 
 	/**
@@ -68,12 +43,33 @@ abstract class OptionModel extends AbstractModel implements OptionStoreInterface
 	 *
 	 * @return mixed
 	 */
-	public function read( $data ) {
-		$options = self::get_options();
-		$ids     = wp_list_pluck( $options, 'id' );
+	public function get_option( $data ) {
+		$options = $this->get_options();
+		$ids     = wp_list_pluck( $options, $this->primaryKey );
 		$index   = array_search( $data, $ids );
 
 		return false !== $index ? $options[ $index ] : [];
+	}
+
+	/**
+	 * Method to create a new record
+	 *
+	 * @param array $data
+	 *
+	 * @return array
+	 */
+	public function create( array $data ) {
+		$data          = wp_parse_args( $data, $this->default_data );
+		$sanitize_data = $this->prepare_item_for_database( $data );
+
+		$sanitize_data[ $this->primaryKey ] = $this->get_last_insert_id() + 1;
+
+		$options   = $this->get_options();
+		$options[] = $sanitize_data;
+		update_option( $this->option_name, $options );
+		$this->increase_last_insert_id();
+
+		return $sanitize_data;
 	}
 
 	/**
@@ -84,18 +80,18 @@ abstract class OptionModel extends AbstractModel implements OptionStoreInterface
 	 * @return mixed
 	 */
 	public function update( array $data ) {
-		$options = [];
+		$options = $this->get_options();
 		$ids     = wp_list_pluck( $options, $this->primaryKey );
 		$index   = array_search( $data[ $this->primaryKey ], $ids );
 		if ( ! false !== $index ) {
 			return $data;
 		}
 		$data              = wp_parse_args( $data, $options[ $index ] );
-		$sanitize_data     = self::prepare_item_for_database( $data );
+		$sanitize_data     = $this->prepare_item_for_database( $data );
 		$options[ $index ] = $sanitize_data;
-		update_option( self::$option_name, $options );
+		update_option( $this->option_name, $options );
 
-		return $data;
+		return $sanitize_data;
 	}
 
 	/**
@@ -106,12 +102,12 @@ abstract class OptionModel extends AbstractModel implements OptionStoreInterface
 	 * @return bool
 	 */
 	public function delete( $data = 0 ) {
-		$options = self::get_options();
+		$options = $this->get_options();
 		$ids     = wp_list_pluck( $options, $this->primaryKey );
 		$index   = array_search( $data, $ids );
 		if ( false !== $index ) {
 			array_splice( $options, $index, 1 );
-			update_option( self::$option_name, $options );
+			update_option( $this->option_name, $options );
 
 			return true;
 		}
@@ -120,9 +116,44 @@ abstract class OptionModel extends AbstractModel implements OptionStoreInterface
 	}
 
 	/**
-	 * Count total records from the database
+	 * Get last insert id
+	 *
+	 * @return int
+	 */
+	protected function get_last_insert_id() {
+		$option = (int) get_option( $this->option_name . '_last_insert_id', 0 );
+
+		return is_numeric( $option ) ? intval( $option ) : 0;
+	}
+
+	/**
+	 * Increase last insert id
+	 */
+	protected function increase_last_insert_id() {
+		$option = $this->get_last_insert_id();
+
+		update_option( $this->option_name . '_last_insert_id', ( $option + 1 ) );
+	}
+
+	/**
+	 * Prepare item for response
+	 *
+	 * @param array $item
 	 *
 	 * @return array
 	 */
-	abstract public function count_records();
+	public function prepare_item_for_response( array $item ) {
+		return $item;
+	}
+
+	/**
+	 * Prepare item for database storage
+	 *
+	 * @param array $item
+	 *
+	 * @return array
+	 */
+	public function prepare_item_for_database( array $item ) {
+		return $item;
+	}
 }

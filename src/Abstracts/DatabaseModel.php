@@ -7,8 +7,10 @@ use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class Model
+ * Class DatabaseModel
  * A thin layer using wpdb database class form rapid development
+ *
+ * @package Stackonet\WP\Framework\Abstracts
  */
 abstract class DatabaseModel extends Data implements DataStoreInterface {
 
@@ -93,6 +95,20 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @var array
 	 */
 	protected static $information_schema = [];
+
+	/**
+	 * Count total records from the database
+	 *
+	 * @return array
+	 */
+	abstract public function count_records();
+
+	/**
+	 * Create database table
+	 *
+	 * @return void
+	 */
+	abstract public function create_table();
 
 	/**
 	 * Model constructor.
@@ -223,7 +239,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$data = $this->find_by_id( $data );
 		}
 
-		if ( $data instanceof self ) {
+		if ( $data instanceof Data ) {
 			return $data->data;
 		}
 
@@ -284,11 +300,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table = $wpdb->prefix . $this->table;
 
-		$item = $this->find_by_id( $id );
-		if ( ! $item instanceof self ) {
-			return false;
-		}
-
 		return ( false !== $wpdb->delete( $table, [ $this->primaryKey => $id ], $this->primaryKeyType ) );
 	}
 
@@ -324,6 +335,11 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		return ( false !== $query );
 	}
 
+	/**
+	 * Get information schema
+	 *
+	 * @return mixed
+	 */
 	public function information_schema() {
 		global $wpdb;
 		$table = $wpdb->prefix . $this->table;
@@ -350,6 +366,24 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		return self::$information_schema[ $table ];
+	}
+
+	/**
+	 * Get pagination data
+	 *
+	 * @param int $total_items
+	 * @param int $per_page
+	 * @param int $current_page
+	 *
+	 * @return array
+	 */
+	public static function get_pagination( $total_items, $per_page = 10, $current_page = 1 ) {
+		return array(
+			"total_items"  => $total_items,
+			"per_page"     => $per_page,
+			"current_page" => $current_page,
+			"total_pages"  => ceil( $total_items / $per_page ),
+		);
 	}
 
 	/**
@@ -415,39 +449,14 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		return $data;
 	}
 
-
 	/**
-	 * Count total records from the database
+	 * Get pagination and order data
+	 *
+	 * @param array $args
 	 *
 	 * @return array
 	 */
-	abstract public function count_records();
-
-	/**
-	 * Create database table
-	 *
-	 * @return void
-	 */
-	abstract public function create_table();
-
-	/**
-	 * Handle dynamic static method calls into the method.
-	 *
-	 * @param string $method
-	 * @param array $parameters
-	 *
-	 * @return mixed
-	 */
-	public static function __callStatic( $method, $parameters ) {
-		return ( new static )->$method( ...$parameters );
-	}
-
-	/**
-	 * @param $args
-	 *
-	 * @return array
-	 */
-	protected function get_pagination_and_order_data( $args ) {
+	protected function get_pagination_and_order_data( array $args ) {
 		$per_page     = isset( $args['per_page'] ) ? absint( $args['per_page'] ) : $this->perPage;
 		$paged        = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
 		$current_page = $paged < 1 ? 1 : $paged;
