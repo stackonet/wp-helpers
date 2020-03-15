@@ -94,7 +94,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * @var array
 	 */
-	protected static $information_schema = [];
+	protected static $columns = [];
 
 	/**
 	 * Count total records from the database
@@ -176,9 +176,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$table        = $wpdb->prefix . $this->table;
 		$current_time = current_time( 'mysql' );
 
+		$tableColumns = $this->get_column_info();
+		$columnsNames = $this->get_columns_names();
+
 		$_data = [];
-		foreach ( $this->default_data as $key => $default ) {
-			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $default;
+		foreach ( $tableColumns as $key => $tableColumn ) {
+			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $tableColumn['default'];
 			$_data[ $key ] = $this->serialize( $temp_data );
 		}
 
@@ -187,7 +190,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		// Update Author ID
-		if ( array_key_exists( $this->created_by, $this->default_data ) ) {
+		if ( array_key_exists( $this->created_by, $columnsNames ) ) {
 			if ( isset( $data[ $this->created_by ] ) && is_numeric( $data[ $this->created_by ] ) ) {
 				$_data[ $this->created_by ] = intval( $data[ $this->created_by ] );
 			} else {
@@ -196,23 +199,23 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		// Update created time
-		if ( array_key_exists( $this->created_at, $this->default_data ) ) {
+		if ( array_key_exists( $this->created_at, $columnsNames ) ) {
 			$_data[ $this->created_at ] = $current_time;
 		}
 
 		// Update updated time
-		if ( array_key_exists( $this->updated_at, $this->default_data ) ) {
+		if ( array_key_exists( $this->updated_at, $columnsNames ) ) {
 			$_data[ $this->updated_at ] = $current_time;
 		}
 
 		// Set deleted at time as null
-		if ( array_key_exists( $this->deleted_at, $this->default_data ) ) {
+		if ( array_key_exists( $this->deleted_at, $columnsNames ) ) {
 			$_data[ $this->deleted_at ] = null;
 		}
 
-		$format = $this->data_format;
-		unset( $format[0] );
-		$wpdb->insert( $table, $_data, $format );
+		$format = $this->get_data_format_for_db( array_keys( $_data ) );
+
+		$wpdb->insert( $table, $_data, array_values( $format ) );
 
 		return $wpdb->insert_id;
 	}
@@ -264,25 +267,30 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			return false;
 		}
 
+		// Database table columns
+		$columnsNames = $this->get_columns_names();
+
 		$_data = [];
-		foreach ( $this->default_data as $key => $default ) {
-			$current_data  = isset( $item[ $key ] ) ? $item[ $key ] : null;
-			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $current_data;
-			$_data[ $key ] = $this->serialize( $temp_data );
+		foreach ( $columnsNames as $columnName ) {
+			$current_data         = isset( $item[ $columnName ] ) ? $item[ $columnName ] : null;
+			$temp_data            = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $current_data;
+			$_data[ $columnName ] = $this->serialize( $temp_data );
 		}
 		$_data[ $this->primaryKey ] = $id;
 
 		// Update updated time
-		if ( array_key_exists( $this->updated_at, $this->default_data ) ) {
+		if ( array_key_exists( $this->updated_at, $columnsNames ) ) {
 			$_data[ $this->updated_at ] = $current_time;
 		}
 
 		// Update deleted time
-		if ( array_key_exists( $this->deleted_at, $this->default_data ) ) {
+		if ( array_key_exists( $this->deleted_at, $columnsNames ) ) {
 			$_data[ $this->deleted_at ] = null;
 		}
 
-		if ( $wpdb->update( $table, $_data, [ $this->primaryKey => $id ], $this->data_format, $this->primaryKeyType ) ) {
+		$dataFormat = $this->get_data_format_for_db( array_keys( $_data ) );
+
+		if ( $wpdb->update( $table, $_data, [ $this->primaryKey => $id ], array_values( $dataFormat ), $this->primaryKeyType ) ) {
 			return true;
 		}
 
@@ -333,39 +341,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$query = $wpdb->update( $table, [ $this->deleted_at => null ], [ $this->primaryKey => $id ] );
 
 		return ( false !== $query );
-	}
-
-	/**
-	 * Get information schema
-	 *
-	 * @return mixed
-	 */
-	public function information_schema() {
-		global $wpdb;
-		$table = $wpdb->prefix . $this->table;
-		if ( empty( self::$information_schema[ $table ] ) ) {
-			$sql = $wpdb->prepare(
-				"SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s;",
-				DB_NAME,
-				$table
-			);
-
-			$results = $wpdb->get_results( $sql, ARRAY_A );
-
-			$data = [];
-			foreach ( $results as $item ) {
-				$data[ $item['COLUMN_NAME'] ] = [
-					'datatype'       => $item['DATA_TYPE'],
-					'default'        => $item['COLUMN_DEFAULT'],
-					'chr_max_length' => is_numeric( $item['CHARACTER_MAXIMUM_LENGTH'] ) ? intval( $item['CHARACTER_MAXIMUM_LENGTH'] ) : null,
-					'nullable'       => $item['IS_NULLABLE'] == "YES",
-				];
-			}
-
-			self::$information_schema[ $table ] = $data;
-		}
-
-		return self::$information_schema[ $table ];
 	}
 
 	/**
@@ -468,5 +443,164 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$order = isset( $args['order'] ) && 'ASC' == $args['order'] ? 'ASC' : 'DESC';
 
 		return array( $per_page, $offset, $orderby, $order );
+	}
+
+	/**
+	 * Get integer data type
+	 *
+	 * @return array
+	 */
+	public static function get_integer_data_type() {
+		return [ 'bit', 'int', 'integer', 'tinyint', 'smallint', 'mediumint', 'bigint', 'bool', 'boolean' ];
+	}
+
+	/**
+	 * get float data type
+	 *
+	 * @return array
+	 */
+	public static function get_float_data_type() {
+		return [ 'float', 'double', 'decimal', 'dec' ];
+	}
+
+	/**
+	 * Get column name
+	 *
+	 * @return array
+	 */
+	public function get_columns_names() {
+		return array_keys( $this->get_column_info() );
+	}
+
+	/**
+	 * Get data format for db
+	 *
+	 * @param array $fields
+	 *
+	 * @return array
+	 */
+	public function get_data_format_for_db( array $fields = [] ) {
+		$columns = $this->get_column_info();
+		if ( empty( $fields ) ) {
+			return wp_list_pluck( $columns, 'data_format' );
+		}
+
+		$formats = [];
+		foreach ( $fields as $field ) {
+			if ( isset( $columns[ $field ] ) ) {
+				$formats[ $field ] = $columns[ $field ]['data_format'];
+			}
+		}
+
+		return $formats;
+	}
+
+	/**
+	 * Get column info
+	 *
+	 * @return array
+	 */
+	public function get_column_info() {
+		if ( ! empty( static::$columns ) ) {
+			return static::$columns;
+		}
+
+		global $wpdb;
+		$table   = $this->get_table_name( $this->table );
+		$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A );
+
+		foreach ( $results as $column ) {
+			$length = static::get_type_and_length( $column );
+
+			static::$columns[ $column['Field'] ] = [
+				'field'       => $column['Field'],
+				'default'     => $column['Default'],
+				'type'        => $length['type'],
+				'length'      => $length['length'],
+				'nullable'    => strtolower( $column['Null'] ) == 'yes',
+				'data_format' => $this->get_data_format_for_type( $length['type'] ),
+			];
+		}
+
+		return static::$columns;
+	}
+
+	/**
+	 * Get table name
+	 *
+	 * @param string $table
+	 *
+	 * @return string
+	 */
+	public function get_table_name( $table ) {
+		global $wpdb;
+		if ( false !== strpos( $table, $wpdb->prefix ) ) {
+			return $table;
+		}
+
+		return $wpdb->prefix . $table;
+	}
+
+	/**
+	 * Get type and max length
+	 *
+	 * @param array $column
+	 *
+	 * @return array|bool
+	 */
+	public static function get_type_and_length( array $column ) {
+		$typeinfo = explode( '(', $column['Type'] );
+		$type     = strtolower( $typeinfo[0] );
+		$length   = false;
+		if ( ! empty( $typeinfo[1] ) ) {
+			$length = trim( $typeinfo[1], ')' );
+		}
+
+		switch ( $type ) {
+			case 'char':
+			case 'varchar':
+				return array( 'type' => 'char', 'length' => (int) $length, );
+
+			case 'binary':
+			case 'varbinary':
+				return array( 'type' => 'byte', 'length' => (int) $length, );
+
+			case 'tinyblob':
+			case 'tinytext':
+				return array( 'type' => 'byte', 'length' => 255, ); // 2^8 - 1
+
+			case 'blob':
+			case 'text':
+				return array( 'type' => 'byte', 'length' => 65535, ); // 2^16 - 1
+
+			case 'mediumblob':
+			case 'mediumtext':
+				return array( 'type' => 'byte', 'length' => 16777215, ); // 2^24 - 1
+
+			case 'longblob':
+			case 'longtext':
+				return array( 'type' => 'byte', 'length' => 4294967295, ); // 2^32 - 1
+
+			default:
+				return array( 'type' => $type, 'length' => $length, );
+		}
+	}
+
+	/**
+	 * Get data format for db
+	 *
+	 * @param string $type
+	 *
+	 * @return string
+	 */
+	public function get_data_format_for_type( $type ) {
+		if ( in_array( $type, static::get_integer_data_type() ) ) {
+			return '%d';
+		}
+		if ( in_array( $type, static::get_float_data_type() ) ) {
+			return '%f';
+		}
+
+		return '%s';
 	}
 }
