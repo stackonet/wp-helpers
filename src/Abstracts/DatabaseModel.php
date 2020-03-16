@@ -231,7 +231,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$columns = $this->get_column_info();
 			foreach ( $default as $columnName => $default ) {
 				$temp_data    = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default;
-				$item[ $key ] = $this->unserialize( $temp_data );
+				$item[ $columnName ] = $this->unserialize( $temp_data );
 			}
 
 			return $item;
