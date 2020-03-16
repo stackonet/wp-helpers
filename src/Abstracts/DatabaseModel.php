@@ -3,6 +3,7 @@
 namespace Stackonet\WP\Framework\Abstracts;
 
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
+use Stackonet\WP\Framework\Supports\Logger;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -63,21 +64,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @var string
 	 */
 	protected $deleted_at = 'deleted_at';
-
-	/**
-	 * Default data
-	 * Must contain all table columns name in (key => value) format
-	 *
-	 * @var array
-	 */
-	protected $default_data = [];
-
-	/**
-	 * Data format
-	 *
-	 * @var array
-	 */
-	protected $data_format = [];
 
 	/**
 	 * The number of models to return for pagination.
@@ -177,7 +163,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$current_time = current_time( 'mysql' );
 
 		$tableColumns = $this->get_column_info();
-		$columnsNames = $this->get_columns_names();
 
 		$_data = [];
 		foreach ( $tableColumns as $key => $tableColumn ) {
@@ -185,12 +170,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$_data[ $key ] = $this->serialize( $temp_data );
 		}
 
-		if ( isset( $_data[ $this->primaryKey ] ) ) {
+		if ( array_key_exists( $this->primaryKey, $_data ) ) {
 			unset( $_data[ $this->primaryKey ] );
 		}
 
 		// Update Author ID
-		if ( array_key_exists( $this->created_by, $columnsNames ) ) {
+		if ( array_key_exists( $this->created_by, $tableColumns ) ) {
 			if ( isset( $data[ $this->created_by ] ) && is_numeric( $data[ $this->created_by ] ) ) {
 				$_data[ $this->created_by ] = intval( $data[ $this->created_by ] );
 			} else {
@@ -199,17 +184,17 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		// Update created time
-		if ( array_key_exists( $this->created_at, $columnsNames ) ) {
+		if ( array_key_exists( $this->created_at, $tableColumns ) ) {
 			$_data[ $this->created_at ] = $current_time;
 		}
 
 		// Update updated time
-		if ( array_key_exists( $this->updated_at, $columnsNames ) ) {
+		if ( array_key_exists( $this->updated_at, $tableColumns ) ) {
 			$_data[ $this->updated_at ] = $current_time;
 		}
 
 		// Set deleted at time as null
-		if ( array_key_exists( $this->deleted_at, $columnsNames ) ) {
+		if ( array_key_exists( $this->deleted_at, $tableColumns ) ) {
 			$_data[ $this->deleted_at ] = null;
 		}
 
@@ -228,25 +213,31 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array|self
 	 */
 	public function read( $data ) {
-		if ( is_array( $data ) ) {
-			$item = [];
-			foreach ( $this->default_data as $key => $default ) {
-				$temp_data    = isset( $data[ $key ] ) ? $data[ $key ] : $default;
-				$item[ $key ] = $this->unserialize( $temp_data );
-			}
-
-			return $item;
-		}
-
 		if ( is_numeric( $data ) ) {
-			$data = $this->find_by_id( $data );
+			$item = $this->find_by_id( $data );
+			if ( empty( $item ) && is_array( $itm ) ) {
+				return $item;
+			}
 		}
 
 		if ( $data instanceof Data ) {
 			return $data->data;
 		}
 
-		return $this->default_data;
+		$default = $this->get_default_data();
+
+		if ( is_array( $data ) ) {
+			$item    = [];
+			$columns = $this->get_column_info();
+			foreach ( $default as $columnName => $default ) {
+				$temp_data    = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default;
+				$item[ $key ] = $this->unserialize( $temp_data );
+			}
+
+			return $item;
+		}
+
+		return $default;
 	}
 
 	/**
@@ -271,20 +262,26 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$columnsNames = $this->get_columns_names();
 
 		$_data = [];
-		foreach ( $columnsNames as $columnName ) {
-			$current_data         = isset( $item[ $columnName ] ) ? $item[ $columnName ] : null;
-			$temp_data            = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $current_data;
+		foreach ( $data as $columnName => $nawValue ) {
+			if ( ! in_array( $columnName, $columnsNames ) ) {
+				continue;
+			}
+			$current_data = isset( $item[ $columnName ] ) ? $item[ $columnName ] : null;
+			$temp_data    = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $current_data;
+			if ( $temp_data == $current_data ) {
+				continue;
+			}
 			$_data[ $columnName ] = $this->serialize( $temp_data );
 		}
 		$_data[ $this->primaryKey ] = $id;
 
 		// Update updated time
-		if ( array_key_exists( $this->updated_at, $columnsNames ) ) {
+		if ( in_array( $this->updated_at, $columnsNames ) ) {
 			$_data[ $this->updated_at ] = $current_time;
 		}
 
 		// Update deleted time
-		if ( array_key_exists( $this->deleted_at, $columnsNames ) ) {
+		if ( in_array( $this->deleted_at, $columnsNames ) ) {
 			$_data[ $this->deleted_at ] = null;
 		}
 
@@ -437,7 +434,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$current_page = $paged < 1 ? 1 : $paged;
 		$offset       = ( $current_page - 1 ) * $per_page;
 		$orderby      = $this->primaryKey;
-		if ( isset( $args['orderby'] ) && in_array( $args['orderby'], array_keys( $this->default_data ) ) ) {
+		$columnsNames = $this->get_columns_names();
+		if ( isset( $args['orderby'] ) && in_array( $args['orderby'], $columnsNames ) ) {
 			$orderby = $args['orderby'];
 		}
 		$order = isset( $args['order'] ) && 'ASC' == $args['order'] ? 'ASC' : 'DESC';
@@ -470,6 +468,35 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function get_columns_names() {
 		return array_keys( $this->get_column_info() );
+	}
+
+	/**
+	 * Get default data
+	 *
+	 * @return array
+	 */
+	public function get_default_data() {
+		$columns = $this->get_column_info();
+		$data    = [];
+		foreach ( $columns as $columnName => $info ) {
+			if ( $info['nullable'] ) {
+				$default = null;
+			} else {
+				$default = isset( $info['default'] ) ? $info['default'] : '';
+			}
+
+			if ( in_array( $columnName, static::get_integer_data_type() ) ) {
+				$default = 0;
+			}
+
+			if ( in_array( $columnName, static::get_float_data_type() ) ) {
+				$default = 0;
+			}
+
+			$data[ $columnName ] = $default;
+		}
+
+		return $data;
 	}
 
 	/**
