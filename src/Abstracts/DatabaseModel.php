@@ -230,7 +230,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$item    = [];
 			$columns = $this->get_column_info();
 			foreach ( $default as $columnName => $default ) {
-				$temp_data    = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default;
+				$temp_data           = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default;
 				$item[ $columnName ] = $this->unserialize( $temp_data );
 			}
 
@@ -528,18 +528,19 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	public function get_column_info() {
-		if ( ! empty( static::$columns ) ) {
-			return static::$columns;
+		$table = $this->get_table_name( $this->table );
+
+		if ( ! empty( static::$columns[ $table ] ) ) {
+			return static::$columns[ $table ];
 		}
 
 		global $wpdb;
-		$table   = $this->get_table_name( $this->table );
 		$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A );
 
 		foreach ( $results as $column ) {
 			$length = static::get_type_and_length( $column );
 
-			static::$columns[ $column['Field'] ] = [
+			static::$columns[ $table ][ $column['Field'] ] = [
 				'field'       => $column['Field'],
 				'default'     => $column['Default'],
 				'type'        => $length['type'],
@@ -549,7 +550,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			];
 		}
 
-		return static::$columns;
+		return static::$columns[ $table ];
 	}
 
 	/**
