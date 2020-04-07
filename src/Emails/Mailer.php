@@ -78,13 +78,7 @@ class Mailer extends EmailTemplate {
 			$message         = $this->get_content_html();
 		}
 
-		if ( ! empty( $this->from_address ) ) {
-			if ( $this->from_name ) {
-				$this->headers[] = "From: {$this->from_name} <{$this->from_address}>";
-			} else {
-				$this->headers[] = "From: $this->from_address";
-			}
-		}
+		$this->add_from_address();
 
 		if ( empty( $this->address ) || empty( $this->subject ) || empty( $message ) ) {
 			throw new Exception( 'Receiver address, Subject and Message are required.' );
@@ -379,5 +373,25 @@ class Mailer extends EmailTemplate {
 	 */
 	private function decodeSpecialChars( $string ) {
 		return wp_specialchars_decode( $string, ENT_QUOTES );
+	}
+
+	/**
+	 * Get mail from address
+	 */
+	public function add_from_address() {
+		if ( empty( $this->from_name ) ) {
+			$this->from_name = get_option( 'blogname' );
+		}
+
+		if ( empty( $this->from_address ) ) {
+			$sitename = strtolower( $_SERVER['SERVER_NAME'] );
+			if ( substr( $sitename, 0, 4 ) == 'www.' ) {
+				$sitename = substr( $sitename, 4 );
+			}
+
+			$this->from_address = 'no-reply@' . $sitename;
+		}
+
+		$this->headers[] = "From: {$this->from_name} <{$this->from_address}>";
 	}
 }
