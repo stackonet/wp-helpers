@@ -173,6 +173,20 @@ class EmailTemplate {
 	}
 
 	/**
+	 * Set intro lines
+	 *
+	 * @param array|string $outro_lines
+	 */
+	public function set_outro_lines( $outro_lines ) {
+		if ( is_array( $outro_lines ) ) {
+			$this->outro_lines = $outro_lines;
+		}
+		if ( is_string( $outro_lines ) ) {
+			$this->outro_lines[] = $outro_lines;
+		}
+	}
+
+	/**
 	 * Get WordPress blog name.
 	 *
 	 * @return string
@@ -195,7 +209,7 @@ class EmailTemplate {
 		if ( $custom_logo_id ) {
 			$logo = wp_get_attachment_image_src( $custom_logo_id, 'medium_large' );
 
-			return '<img src="' . $logo . '" width="75" alt="' . $blog_name . '"/>';
+			return '<img src="' . $logo[0] . '" width="75" alt="' . $blog_name . '"/>';
 		}
 
 		return $blog_name;
