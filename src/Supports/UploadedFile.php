@@ -33,6 +33,13 @@ class UploadedFile implements UploadedFileInterface {
 	protected $type;
 
 	/**
+	 * The media type of the file. Determine in server by checking file
+	 *
+	 * @var string
+	 */
+	protected $mime_type = false;
+
+	/**
 	 * The size of the file in bytes.
 	 *
 	 * @var int
@@ -304,5 +311,40 @@ class UploadedFile implements UploadedFileInterface {
 		$extension = pathinfo( $this->getClientFilename(), PATHINFO_EXTENSION );
 
 		return strtolower( $extension );
+	}
+
+	/**
+	 * Get media type using finfo class
+	 *
+	 * @return string|bool
+	 */
+	public function getMediaType() {
+		if ( empty( $this->mime_type ) ) {
+			if ( class_exists( \finfo::class ) ) {
+				$this->mime_type = ( new \finfo )->file( $this->getFile(), FILEINFO_MIME_TYPE );
+			}
+		}
+
+		return $this->mime_type;
+	}
+
+	/**
+	 * Check if uploaded file is a image
+	 *
+	 * @return bool
+	 */
+	public function isImage() {
+		$mime_types = [ 'image/jpeg', 'image/gif', 'image/png', 'image/bmp', 'image/tiff', 'image/x-icon' ];
+
+		return in_array( $this->getMediaType(), $mime_types, true );
+	}
+
+	/**
+	 * Check if uploaded file is a PDF
+	 *
+	 * @return bool
+	 */
+	public function isPdf() {
+		return in_array( $this->getMediaType(), [ 'application/pdf' ], true );
 	}
 }
