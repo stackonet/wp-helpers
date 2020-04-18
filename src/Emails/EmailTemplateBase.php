@@ -37,13 +37,13 @@ class EmailTemplateBase {
 		'body'                => 'margin: 0; padding: 0; width: 100%; background-color: #f5f5f5;',
 		'email-wrapper'       => 'width: 100%; margin: 0; padding: 0; background-color: #f5f5f5;',
 		/* Masthead ----------------------- */
-		'email-header'        => 'width: auto; max-width: 570px; margin: 0 auto; padding: 0; text-align: center;',
+		'email-header'        => 'width: auto; max-width: 600px; margin: 0 auto; padding: 0; text-align: center;',
 		'email-masthead'      => 'padding: 25px 0; text-align: center;',
 		'email-masthead_name' => 'font-size: 16px; font-weight: bold; color: #2F3133; text-decoration: none; text-shadow: 0 1px 0 white;',
 		'email-body'          => 'width: 100%; margin: 0; padding: 0; border-top: 1px solid #EDEFF2; border-bottom: 1px solid #EDEFF2; background-color: #FFF;',
-		'email-body_inner'    => 'width: auto; max-width: 570px; margin: 0 auto; padding: 0;',
-		'email-body_cell'     => 'padding: 35px;',
-		'email-footer'        => 'width: auto; max-width: 570px; margin: 0 auto; padding: 0; text-align: center;',
+		'email-body_inner'    => 'width: 100%; max-width: 600px; margin: 0; padding: 0;',
+		'email-body_cell'     => 'padding: 15px;',
+		'email-footer'        => 'width: auto; max-width: 600px; margin: 0 auto; padding: 0; text-align: center;',
 		'email-footer_cell'   => 'color: #AEAEAE; padding: 35px; text-align: center;',
 		/* Body ------------------------------ */
 		'body_action'         => 'width: 100%; margin: 30px auto; padding: 0; text-align: center;',
@@ -69,6 +69,21 @@ class EmailTemplateBase {
 	 * @var string
 	 */
 	protected $fontFamily = 'font-family: Arial, \'Helvetica Neue\', Helvetica, sans-serif;';
+
+	/**
+	 * Get style
+	 *
+	 * @param string $key
+	 *
+	 * @return string
+	 */
+	public function get_style( $key ) {
+		if ( 'font-family' == $key ) {
+			return $this->fontFamily;
+		}
+
+		return isset( $this->style[ $key ] ) ? $this->style[ $key ] : '';
+	}
 
 	/**
 	 * Get WordPress blog name.
@@ -129,7 +144,7 @@ class EmailTemplateBase {
 	/**
 	 * Get logo html
 	 */
-	protected function get_logo_html() {
+	public function get_logo_html() {
 		return sprintf( "<a style='%s' target='_blank' href='%s'>%s</a>",
 			$this->fontFamily . $this->style['email-masthead_name'],
 			$this->get_home_url(),
@@ -177,7 +192,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	protected function get_unique_styles( $styles ) {
+	public function get_unique_styles( $styles ) {
 		if ( is_string( $styles ) ) {
 			$styles = explode( ';', $styles );
 		}
@@ -234,6 +249,20 @@ class EmailTemplateBase {
 		$this->footer_text = $footer_text;
 
 		return $this;
+	}
+
+	/**
+	 * Get paragraph
+	 *
+	 * @param string $text
+	 * @param string $style
+	 *
+	 * @return string
+	 */
+	public function add_paragraph( $text, $style = '' ) {
+		$style = $this->get_unique_styles( $this->get_style( 'paragraph' ) . $style );
+
+		return sprintf( "<p style='%s'>%s</p>", $style, $text ) . PHP_EOL;
 	}
 
 	/**
@@ -321,6 +350,50 @@ class EmailTemplateBase {
 		$html .= '</table>' . PHP_EOL;
 		$html .= '</body>' . PHP_EOL;
 		$html .= '</html>' . PHP_EOL;
+
+		return $html;
+	}
+
+	/**
+	 * Email top content
+	 *
+	 * @return string
+	 */
+	public function before_content() {
+		$html = $this->get_email_head();
+
+		$html .= $this->section_start( [
+			'section-style' => 'background-color:#f5f5f5;',
+			'cell-style'    => $this->style['email-masthead'],
+		] );
+		$html .= $this->get_logo_html();
+		$html .= $this->section_end();
+
+		$html .= $this->section_start( [
+			'section-style' => $this->style['email-body'],
+			'table-style'   => $this->style['email-body_inner'],
+			'cell-style'    => $this->style['email-body_cell'],
+		] );
+
+		return $html;
+	}
+
+	/**
+	 * Email bottom content
+	 *
+	 * @return string
+	 */
+	public function after_content() {
+		$html = $this->section_end();
+
+		$html .= $this->section_start( [
+			'section-style' => 'background-color:#f5f5f5;',
+			'cell-style'    => $this->style['email-footer_cell'],
+		] );
+		$html .= $this->get_footer_html();
+		$html .= $this->section_end();
+
+		$html .= $this->get_email_footer();
 
 		return $html;
 	}

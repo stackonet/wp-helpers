@@ -233,7 +233,7 @@ class ActionEmailTemplate extends EmailTemplateBase {
 		$html = '';
 		if ( count( $this->intro_lines ) ) {
 			foreach ( $this->intro_lines as $line ) {
-				$html .= sprintf( "<p style='%s'>%s</p>", $this->style['paragraph'], $line );
+				$html .= $this->add_paragraph( $line );
 			}
 		}
 
@@ -247,7 +247,7 @@ class ActionEmailTemplate extends EmailTemplateBase {
 		$html = '';
 		if ( count( $this->outro_lines ) ) {
 			foreach ( $this->outro_lines as $line ) {
-				$html .= sprintf( "<p style='%s'>%s</p>", $this->style['paragraph'], $line );
+				$html .= $this->add_paragraph( $line );
 			}
 		}
 
@@ -320,20 +320,7 @@ class ActionEmailTemplate extends EmailTemplateBase {
 	 * @return string
 	 */
 	public function get_content_html() {
-		$html = $this->get_email_head();
-
-		$html .= $this->section_start( [
-			'section-style' => 'background-color:#f5f5f5;',
-			'cell-style'    => $this->style['email-masthead'],
-		] );
-		$html .= $this->get_logo_html();
-		$html .= $this->section_end();
-
-		$html .= $this->section_start( [
-			'section-style' => $this->style['email-body'],
-			'table-style'   => $this->style['email-body_inner'],
-			'cell-style'    => $this->style['email-body_cell'],
-		] );
+		$html = $this->before_content();
 
 		$html .= $this->get_greeting_html();
 		$html .= $this->get_intro_lines_html();
@@ -342,17 +329,7 @@ class ActionEmailTemplate extends EmailTemplateBase {
 		$html .= $this->get_salutation_html();
 		$html .= $this->get_sub_copy_html();
 
-		$html .= $this->section_end();
-
-
-		$html .= $this->section_start( [
-			'section-style' => 'background-color:#f5f5f5;',
-			'cell-style'    => $this->style['email-footer_cell'],
-		] );
-		$html .= $this->get_footer_html();
-		$html .= $this->section_end();
-
-		$html .= $this->get_email_footer();
+		$html .= $this->after_content();
 
 		return $html;
 	}
