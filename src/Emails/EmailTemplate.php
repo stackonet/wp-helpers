@@ -97,7 +97,7 @@ class EmailTemplate {
 	 *
 	 * @var string
 	 */
-	protected $salutation;
+	protected $salutation = '';
 
 	/**
 	 * Email footer text
@@ -253,16 +253,21 @@ class EmailTemplate {
 	}
 
 	/**
+	 * Get default salutation
+	 *
+	 * @return string
+	 */
+	public function get_default_salutation() {
+		return 'Regards,<br>' . $this->get_blogname();
+	}
+
+	/**
 	 * Get salutation
 	 *
 	 * @return string
 	 */
 	public function get_salutation() {
-		if ( ! empty( $this->salutation ) ) {
-			return $this->salutation;
-		}
-
-		return 'Regards,<br>' . $this->get_blogname();
+		return $this->salutation;
 	}
 
 	/**
@@ -315,6 +320,71 @@ class EmailTemplate {
 	}
 
 	/**
+	 * Section start
+	 *
+	 * @param array $args
+	 */
+	public function section_start( array $args = [] ) {
+		$default       = [ 'content-width' => 600, 'section-style' => '', 'table-style' => '', 'cell-style' => '' ];
+		$styles        = wp_parse_args( $args, $default );
+		$width         = intval( $styles['content-width'] );
+		$style_section = "width:100%;margin:0;padding:0;background-color:#ffffff;" . $styles['section-style'];
+		$style_table   = "width: auto;max-width: " . $width . "px;margin: 0 auto;padding: 0;" . $styles['table-style'];
+		$style_cell    = $this->fontFamily . $styles['cell-style'];
+		?>
+		<tr class="email-section">
+		<td style="<?php echo $this->get_unique_styles( $style_section ) ?>">
+		<table style="<?php echo $this->get_unique_styles( $style_table ); ?>" width="<?php echo $width ?>" align="center" cellpadding="0" cellspacing="0">
+		<tr>
+		<td style="<?php echo $this->get_unique_styles( $style_cell ); ?>">
+		<?php
+	}
+
+	/**
+	 * Section end
+	 */
+	public function section_end() {
+		?>
+		</td>
+		</tr>
+		</table>
+		</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * Make style unique
+	 *
+	 * @param array|string $styles
+	 *
+	 * @return string
+	 */
+	public function get_unique_styles( $styles ) {
+		if ( is_string( $styles ) ) {
+			$styles = explode( ';', $styles );
+		}
+
+		$_styles = [];
+		foreach ( $styles as $_style ) {
+			$style    = explode( ':', $_style );
+			$property = isset( $style[0] ) ? trim( $style[0] ) : '';
+			$value    = isset( $style[1] ) ? trim( $style[1] ) : '';
+			if ( $property == '' || $value == '' ) {
+				continue;
+			}
+			$_styles[ $property ] = $value;
+		}
+
+		$final_styles = [];
+		foreach ( $_styles as $property => $value ) {
+			$final_styles[] = $property . ":" . $value;
+		}
+
+		return implode( ";", $final_styles ) . ";";
+	}
+
+	/**
 	 * Get content html
 	 */
 	public function get_content_html() {
@@ -322,52 +392,38 @@ class EmailTemplate {
 		$this->email_wrapper_start()
 		?>
 		<table width="100%" cellpadding="0" cellspacing="0">
+			<?php
+			$this->section_start( [
+				'section-style' => 'background-color:#F2F4F6;',
+				'cell-style'    => $this->style['email-masthead'],
+			] );
+			$this->get_logo_html();
+			$this->section_end();
 
-			<tr>
-				<td>
-					<table style="<?php echo $this->style['email-header']; ?>" align="center" width="570"
-					       cellpadding="0" cellspacing="0">
-						<tr>
-							<td style="<?php echo $this->style['email-masthead']; ?>">
-								<?php $this->get_logo_html() ?>
-							</td>
-						</tr>
-					</table>
-				</td>
-			</tr>
 
-			<tr>
-				<td style="<?php echo $this->style['email-body']; ?>" width="100%">
-					<table style="<?php echo $this->style['email-body_inner']; ?>" align="center"
-					       width="570" cellpadding="0" cellspacing="0">
-						<tr>
-							<td style="<?php echo $this->fontFamily . $this->style['email-body_cell']; ?>">
-								<?php
-								$this->get_greeting_html();
-								$this->get_intro_lines_html();
-								$this->get_action_button_html();
-								$this->get_outro_lines_html();
-								$this->get_salutation_html();
-								$this->get_sub_copy_html();
-								?>
-							</td>
-						</tr>
-					</table>
-				</td>
-			</tr>
+			$this->section_start( [
+				'section-style' => $this->style['email-body'],
+				'table-style'   => $this->style['email-body_inner'],
+				'cell-style'    => $this->style['email-body_cell'],
+			] );
 
-			<tr>
-				<td>
-					<table style="<?php echo $this->style['email-footer']; ?>" align="center" width="570"
-					       cellpadding="0" cellspacing="0">
-						<tr>
-							<td style="<?php echo $this->fontFamily . $this->style['email-footer_cell']; ?>">
-								<?php $this->get_footer_html() ?>
-							</td>
-						</tr>
-					</table>
-				</td>
-			</tr>
+			$this->get_greeting_html();
+			$this->get_intro_lines_html();
+			$this->get_action_button_html();
+			$this->get_outro_lines_html();
+			$this->get_salutation_html();
+			$this->get_sub_copy_html();
+
+			$this->section_end();
+
+
+			$this->section_start( [
+				'section-style' => 'background-color:#F2F4F6;',
+				'cell-style'    => $this->style['email-footer_cell'],
+			] );
+			$this->get_footer_html();
+			$this->section_end();
+			?>
 
 		</table>
 		<?php
@@ -389,22 +445,28 @@ class EmailTemplate {
 	}
 
 	/**
+	 * Default greeting text
+	 *
+	 * @return string
+	 */
+	public function get_default_greeting_text() {
+		if ( $this->level == 'error' ) {
+			return 'Whoops!';
+		}
+
+		return 'Hello!';
+	}
+
+	/**
 	 * Get greeting text
 	 */
 	protected function get_greeting_html() {
+		if ( empty( $this->greeting ) ) {
+			return;
+		}
 		?>
 		<h1 style="<?php echo $this->style['header-1']; ?>">
-			<?php
-			if ( ! empty( $this->greeting ) ) {
-				echo $this->greeting;
-			} else {
-				if ( $this->level == 'error' ) {
-					echo 'Whoops!';
-				} else {
-					echo 'Hello!';
-				}
-			}
-			?>
+			<?php echo $this->greeting; ?>
 		</h1>
 		<?php
 	}
@@ -478,9 +540,13 @@ class EmailTemplate {
 	 * Salutation
 	 */
 	protected function get_salutation_html() {
+		$salutation = $this->get_salutation();
+		if ( empty( $salutation ) ) {
+			return;
+		}
 		?>
 		<p style="<?php echo $this->style['paragraph']; ?>">
-			<?php echo $this->get_salutation(); ?>
+			<?php echo $salutation; ?>
 		</p>
 		<?php
 	}
