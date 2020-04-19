@@ -215,7 +215,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	public function read( $data ) {
 		if ( is_numeric( $data ) ) {
 			$item = $this->find_by_id( $data );
-			if ( empty( $item ) && is_array( $itm ) ) {
+			if ( empty( $item ) && is_array( $item ) ) {
 				return $item;
 			}
 		}

@@ -1,4 +1,8 @@
 <?php
+
+// If this file is called directly, abort.
+defined( 'ABSPATH' ) || exit;
+
 spl_autoload_register( function ( $class ) {
 	// project-specific namespace prefix
 	$prefix = 'Stackonet\\WP\\Examples\\';
