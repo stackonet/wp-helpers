@@ -2,7 +2,7 @@
 
 namespace Stackonet\WP\Framework\Supports;
 
-use Exception;
+use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -10,36 +10,33 @@ class RestClient {
 	/**
 	 * @var string
 	 */
-	private $api_base_url = '';
+	protected $api_base_url = '';
 
 	/**
 	 * @var string
 	 */
-	private $user_agent = 'WordPress';
+	protected $user_agent = null;
 
 	/**
 	 * @var array
 	 */
-	public $request_cache = array();
+	protected $headers = array();
 
 	/**
 	 * @var array
 	 */
-	private $headers = array();
-
-	/**
-	 * @var array
-	 */
-	private $request_args = array();
+	protected $request_args = array();
 
 	/**
 	 * RestClient constructor.
 	 *
 	 * @param $rest_base_url
 	 */
-	public function __construct( $rest_base_url ) {
-		$this->api_base_url = $rest_base_url;
-		$this->user_agent   = get_option( 'blogname' );
+	public function __construct( $rest_base_url = null ) {
+		if ( ! empty( $rest_base_url ) ) {
+			$this->api_base_url = $rest_base_url;
+		}
+		$this->user_agent = get_option( 'blogname' );
 		//setup defaults
 		$this->set_request_arg( 'timeout', 30 )
 		     ->set_request_arg( 'sslverify', false )
@@ -80,50 +77,56 @@ class RestClient {
 	}
 
 	/**
+	 * Get api endpoint
+	 *
 	 * @param string $endpoint
-	 * @param null $data
 	 *
-	 * @return array|mixed
-	 * @throws Exception
-	 * @uses request
-	 *
+	 * @return string
 	 */
-	public function post( $endpoint = '', $data = null ) {
+	public function get_api_endpoint( $endpoint ) {
+		return rtrim( $this->api_base_url, '/' ) . '/' . ltrim( $endpoint, '/' );
+	}
+
+	/**
+	 * Performs an HTTP POST request and returns its response.
+	 *
+	 * @param string $endpoint
+	 * @param array $data
+	 *
+	 * @return array|WP_Error The response array or a WP_Error on failure.
+	 */
+	public function post( $endpoint = '', array $data = [] ) {
 		$request_body = wp_json_encode( $data );
 
 		return $this->request( 'POST', $endpoint, $request_body );
 	}
 
 	/**
+	 * Performs an HTTP GET request and returns its response.
+	 *
 	 * @param string $endpoint
-	 * @param null $data
+	 * @param array $parameters
 	 *
-	 * @return array|mixed
-	 * @throws Exception
-	 * @uses request
-	 *
+	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
-	public function get( $endpoint = '', $data = null ) {
-		return $this->request( 'GET', $endpoint, $data );
+	public function get( $endpoint = '', array $parameters = [] ) {
+		return $this->request( 'GET', $endpoint, $parameters );
 	}
 
 	/**
-	 * @param string $method
-	 * @param string $endpoint
-	 * @param null $request_body
-	 * @param int $valid_response_code
+	 * Performs an HTTP request and returns its response.
 	 *
-	 * @return array
-	 * @throws Exception
+	 * @param string $method Request method. Support GET, POST, PUT, DELETE
+	 * @param string $endpoint
+	 * @param null|string|array $request_body
+	 *
+	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
-	public function request( $method = 'GET', $endpoint = '', $request_body = null, $valid_response_code = 200 ) {
-		$request_url      = $this->api_base_url . $endpoint;
-		$base_args        = array(
-			'method'  => $method,
-			'headers' => $this->headers,
-		);
+	public function request( $method = 'GET', $endpoint = '', $request_body = null ) {
+		$request_url      = $this->get_api_endpoint( $endpoint );
+		$base_args        = array( 'method' => $method, 'headers' => $this->headers, );
 		$api_request_args = array_merge( $base_args, $this->request_args );
-		if ( null !== $request_body ) {
+		if ( ! empty( $request_body ) ) {
 			if ( in_array( $method, array( 'POST', 'PUT' ) ) ) {
 				$api_request_args['body'] = $request_body;
 			} else {
@@ -131,33 +134,26 @@ class RestClient {
 			}
 		}
 
-		$cache_key = md5( $method . $endpoint . json_encode( $api_request_args ) );
-		if ( isset( $this->request_cache[ $cache_key ] ) && isset( $this->request_cache[ $cache_key ]['parsed'] ) ) {
-			$this->request_cache[ $cache_key ]['parsed'];
+		$response = wp_remote_request( $request_url, $api_request_args );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
 
-		$response      = wp_remote_request( $request_url, $api_request_args );
 		$response_code = (int) wp_remote_retrieve_response_code( $response );
-
-		$this->request_cache[ $cache_key ]['raw'] = $response;
-
-		if ( is_wp_error( $response ) || $valid_response_code !== $response_code ) {
-			throw new Exception( 'Rest Client Error: response code ' . $response_code );
-		}
-
 		$response_body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( ! is_array( $response_body ) ) {
-			throw new Exception( 'Rest Client Error: unexpected response type' );
+			return new WP_Error( 'unexpected_response_type', 'Rest Client Error: unexpected response type' );
 		}
 
-		$return = array(
-			'code' => $response_code,
-			'body' => $response_body,
-		);
+		$is_success = ( $response_code >= 200 && $response_code < 300 );
+		if ( ! $is_success ) {
+			$response_message = wp_remote_retrieve_response_message( $response );
 
-		$this->request_cache[ $cache_key ]['parsed'] = $return;
+			return new WP_Error( 'rest_error', $response_message, $response_body );
+		}
 
-		return $return;
+		return $response_body;
 	}
 }
