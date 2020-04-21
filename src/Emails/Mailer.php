@@ -6,7 +6,7 @@ use Exception;
 
 defined( 'ABSPATH' ) || exit;
 
-class Mailer extends EmailTemplate {
+class Mailer extends ActionEmailTemplate {
 
 	/**
 	 * list of email addresses to send message.
@@ -71,20 +71,21 @@ class Mailer extends EmailTemplate {
 	 * @throws Exception
 	 */
 	public function send() {
-		$message = $this->message;
-
 		if ( $this->is_html ) {
 			$this->headers[] = 'Content-Type: text/html; charset=UTF-8';
-			$message         = $this->get_content_html();
+
+			if ( $this->has_content_html() ) {
+				$this->message = $this->get_content_html();
+			}
 		}
 
 		$this->add_from_address();
 
-		if ( empty( $this->address ) || empty( $this->subject ) || empty( $message ) ) {
+		if ( empty( $this->address ) || empty( $this->subject ) || empty( $this->message ) ) {
 			throw new Exception( 'Receiver address, Subject and Message are required.' );
 		}
 
-		return wp_mail( $this->getAddress(), $this->subject, $message, $this->getHeaders(), $this->attachments );
+		return wp_mail( $this->getAddress(), $this->subject, $this->message, $this->getHeaders(), $this->attachments );
 	}
 
 	/**
@@ -392,6 +393,6 @@ class Mailer extends EmailTemplate {
 			$this->from_address = 'no-reply@' . $sitename;
 		}
 
-		$this->headers[] = "From: {$this->from_name} <{$this->from_address}>";
+		$this->headers[] = $this->encodeSpecialChars( "From: {$this->from_name} <{$this->from_address}>" );
 	}
 }

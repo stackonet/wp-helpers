@@ -8,21 +8,29 @@ defined( 'ABSPATH' ) || exit;
 
 class RestClient {
 	/**
+	 * API base URL
+	 *
 	 * @var string
 	 */
 	protected $api_base_url = '';
 
 	/**
+	 * User Agent
+	 *
 	 * @var string
 	 */
 	protected $user_agent = null;
 
 	/**
+	 * Request headers
+	 *
 	 * @var array
 	 */
 	protected $headers = array();
 
 	/**
+	 * Additional request arguments
+	 *
 	 * @var array
 	 */
 	protected $request_args = array();
@@ -30,13 +38,14 @@ class RestClient {
 	/**
 	 * RestClient constructor.
 	 *
-	 * @param $rest_base_url
+	 * @param string $api_base_url
 	 */
-	public function __construct( $rest_base_url = null ) {
-		if ( ! empty( $rest_base_url ) ) {
-			$this->api_base_url = $rest_base_url;
+	public function __construct( $api_base_url = null ) {
+		if ( ! empty( $api_base_url ) ) {
+			$this->api_base_url = $api_base_url;
 		}
 		$this->user_agent = get_option( 'blogname' );
+
 		//setup defaults
 		$this->set_request_arg( 'timeout', 30 )
 		     ->set_request_arg( 'sslverify', false )
@@ -46,10 +55,12 @@ class RestClient {
 	}
 
 	/**
-	 * @param $key
-	 * @param $value
+	 * Add header
 	 *
-	 * @return $this
+	 * @param string $key
+	 * @param mixed $value
+	 *
+	 * @return self
 	 */
 	public function add_headers( $key, $value = null ) {
 		if ( ! is_array( $key ) ) {
@@ -62,6 +73,18 @@ class RestClient {
 		}
 
 		return $this;
+	}
+
+	/**
+	 * Add authorization header
+	 *
+	 * @param string $credentials
+	 * @param string $type
+	 *
+	 * @return self
+	 */
+	public function add_auth_header( $credentials, $type = 'Basic' ) {
+		return $this->add_headers( 'Authorization', $type . ' ' . $credentials );
 	}
 
 	/**
@@ -88,20 +111,6 @@ class RestClient {
 	}
 
 	/**
-	 * Performs an HTTP POST request and returns its response.
-	 *
-	 * @param string $endpoint
-	 * @param array $data
-	 *
-	 * @return array|WP_Error The response array or a WP_Error on failure.
-	 */
-	public function post( $endpoint = '', array $data = [] ) {
-		$request_body = wp_json_encode( $data );
-
-		return $this->request( 'POST', $endpoint, $request_body );
-	}
-
-	/**
 	 * Performs an HTTP GET request and returns its response.
 	 *
 	 * @param string $endpoint
@@ -111,6 +120,42 @@ class RestClient {
 	 */
 	public function get( $endpoint = '', array $parameters = [] ) {
 		return $this->request( 'GET', $endpoint, $parameters );
+	}
+
+	/**
+	 * Performs an HTTP POST request and returns its response.
+	 *
+	 * @param string $endpoint
+	 * @param mixed $data
+	 *
+	 * @return array|WP_Error The response array or a WP_Error on failure.
+	 */
+	public function post( $endpoint = '', $data = null ) {
+		return $this->request( 'POST', $endpoint, $data );
+	}
+
+	/**
+	 * Performs an HTTP PUT request and returns its response.
+	 *
+	 * @param string $endpoint
+	 * @param mixed $data
+	 *
+	 * @return array|WP_Error The response array or a WP_Error on failure.
+	 */
+	public function put( $endpoint = '', $data = null ) {
+		return $this->request( 'PUT', $endpoint, $data );
+	}
+
+	/**
+	 * Performs an HTTP DELETE request and returns its response.
+	 *
+	 * @param string $endpoint
+	 * @param mixed $parameters
+	 *
+	 * @return array|WP_Error The response array or a WP_Error on failure.
+	 */
+	public function delete( $endpoint = '', $parameters = null ) {
+		return $this->request( 'DELETE', $endpoint, $parameters );
 	}
 
 	/**
@@ -147,8 +192,7 @@ class RestClient {
 			return new WP_Error( 'unexpected_response_type', 'Rest Client Error: unexpected response type' );
 		}
 
-		$is_success = ( $response_code >= 200 && $response_code < 300 );
-		if ( ! $is_success ) {
+		if ( ! ( $response_code >= 200 && $response_code < 300 ) ) {
 			$response_message = wp_remote_retrieve_response_message( $response );
 
 			return new WP_Error( 'rest_error', $response_message, $response_body );

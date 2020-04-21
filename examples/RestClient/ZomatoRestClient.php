@@ -27,7 +27,7 @@ class ZomatoRestClient extends RestClient {
 		$this->user_key = '0689ee4ab88f8107c748db9e00259432=';
 		$this->add_headers( 'user-key', $this->user_key );
 
-		parent::__construct( $this->api_base_url );
+		parent::__construct();
 	}
 
 	/**

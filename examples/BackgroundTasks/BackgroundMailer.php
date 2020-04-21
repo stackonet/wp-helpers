@@ -34,9 +34,20 @@ class BackgroundMailer extends BackgroundProcess {
 	public static function init() {
 		if ( is_null( self::$instance ) ) {
 			self::$instance = new self;
+
+			add_action( 'shutdown', [ self::$instance, 'dispatch_data' ] );
 		}
 
 		return self::$instance;
+	}
+
+	/**
+	 * Save and run background on shutdown of all code
+	 */
+	public function dispatch_data() {
+		if ( ! empty( $this->data ) ) {
+			$this->save()->dispatch();
+		}
 	}
 
 	/**
@@ -85,9 +96,4 @@ class BackgroundMailer extends BackgroundProcess {
 //foreach ( $users as $user ) {
 //	$backgroundMailer->push_to_queue( [ 'user_id' => $user->ID ] );
 //}
-//// Save and run background on shutdown of all code
-//add_action( 'shutdown', function () use ( $backgroundMailer ) {
-//	$backgroundMailer->save();
-//	$backgroundMailer->dispatch();
-//}, 100 );
 // ===============================================================================

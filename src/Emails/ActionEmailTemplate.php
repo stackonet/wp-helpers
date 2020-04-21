@@ -316,6 +316,15 @@ class ActionEmailTemplate extends EmailTemplateBase {
 	}
 
 	/**
+	 * Check if email body has content
+	 *
+	 * @return bool
+	 */
+	public function has_content_html() {
+		return ! ! ( $this->has_action() || count( $this->intro_lines ) || count( $this->outro_lines ) );
+	}
+
+	/**
 	 * Get content html
 	 * @return string
 	 */
