@@ -3,7 +3,6 @@
 namespace Stackonet\WP\Framework\Abstracts;
 
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
-use Stackonet\WP\Framework\Supports\Logger;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -70,7 +69,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @var int
 	 */
-	protected $perPage = 15;
+	protected $perPage = 20;
 
 	/**
 	 * @var string
@@ -81,20 +80,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @var array
 	 */
 	protected static $columns = [];
-
-	/**
-	 * Count total records from the database
-	 *
-	 * @return array
-	 */
-	abstract public function count_records();
-
-	/**
-	 * Create database table
-	 *
-	 * @return void
-	 */
-	abstract public function create_table();
 
 	/**
 	 * Model constructor.
@@ -227,10 +212,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$default = $this->get_default_data();
 
 		if ( is_array( $data ) ) {
-			$item    = [];
-			$columns = $this->get_column_info();
-			foreach ( $default as $columnName => $default ) {
-				$temp_data           = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default;
+			$item = [];
+			foreach ( $default as $columnName => $default_value ) {
+				$temp_data           = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default_value;
 				$item[ $columnName ] = $this->unserialize( $temp_data );
 			}
 

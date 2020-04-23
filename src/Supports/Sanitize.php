@@ -13,7 +13,7 @@ class Sanitize {
 	/**
 	 * Sanitize number options.
 	 *
-	 * @param int|float|double|string $value The value to be sanitized.
+	 * @param mixed $value The value to be sanitized.
 	 *
 	 * @return integer|double|string
 	 */

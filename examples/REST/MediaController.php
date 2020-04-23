@@ -3,9 +3,9 @@
 namespace Stackonet\WP\Examples\REST;
 
 use Exception;
+use Stackonet\WP\Framework\Media\UploadedFile;
+use Stackonet\WP\Framework\Media\Uploader;
 use Stackonet\WP\Framework\REST\ApiController;
-use Stackonet\WP\Framework\Supports\Attachment;
-use Stackonet\WP\Framework\Supports\UploadedFile;
 use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -106,7 +106,7 @@ class MediaController extends ApiController {
 			return $this->respondForbidden();
 		}
 
-		$attachment_id = Attachment::uploadSingleFile( $files['file'] );
+		$attachment_id = Uploader::uploadSingleFile( $files['file'] );
 		if ( is_wp_error( $attachment_id ) ) {
 			return $this->respondUnprocessableEntity( $attachment_id->get_error_code(), $attachment_id->get_error_message() );
 		}

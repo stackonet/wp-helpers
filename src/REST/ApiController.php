@@ -28,13 +28,6 @@ class ApiController extends WP_REST_Controller {
 	protected $namespace = 'stackonet/v1';
 
 	/**
-	 * MYSQL data format
-	 *
-	 * @var string
-	 */
-	protected static $mysql_date_format = 'Y-m-d';
-
-	/**
 	 * Get HTTP status code.
 	 *
 	 * @return integer
@@ -277,7 +270,7 @@ class ApiController extends WP_REST_Controller {
 		}
 
 		if ( empty( $message ) ) {
-			$message = 'Sorry, no item found.';
+			$message = 'Sorry, no resource found for your request.';
 		}
 
 		return $this->setStatusCode( 404 )->respondWithError( $code, $message, $data );
@@ -294,6 +287,18 @@ class ApiController extends WP_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function respondUnprocessableEntity( $code = null, $message = null, $data = null ) {
+		if ( 1 === func_num_args() && is_array( $code ) ) {
+			list( $code, $message, $data ) = array( null, null, $code );
+		}
+
+		if ( empty( $code ) ) {
+			$code = 'rest_invalid_data_type';
+		}
+
+		if ( empty( $message ) ) {
+			$message = 'One or more fields has an error. Fix and try again.';
+		}
+
 		return $this->setStatusCode( 422 )->respondWithError( $code, $message, $data );
 	}
 
@@ -308,6 +313,14 @@ class ApiController extends WP_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function respondInternalServerError( $code = null, $message = null, $data = null ) {
+		if ( empty( $code ) ) {
+			$code = 'rest_server_error';
+		}
+
+		if ( empty( $message ) ) {
+			$message = 'Sorry, something went wrong.';
+		}
+
 		return $this->setStatusCode( 500 )->respondWithError( $code, $message, $data );
 	}
 
@@ -323,11 +336,6 @@ class ApiController extends WP_REST_Controller {
 	public static function formatDate( $date, $type = 'iso' ) {
 		if ( ! $date instanceof DateTime ) {
 			$date = new DateTime( $date );
-
-			$timezone = get_option( 'timezone_string' );
-			if ( in_array( $timezone, DateTimeZone::listIdentifiers() ) ) {
-				$date->setTimezone( new DateTimeZone( $timezone ) );
-			}
 		}
 
 		// Format ISO 8601 date
@@ -336,7 +344,7 @@ class ApiController extends WP_REST_Controller {
 		}
 
 		if ( 'mysql' == $type ) {
-			return $date->format( self::$mysql_date_format );
+			return $date->format( 'Y-m-d' );
 		}
 
 		if ( 'timestamp' == $type ) {
@@ -365,7 +373,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @return array
 	 */
-	public static function get_pagination_data( $total_items, $per_page = 10, $current_page = 1 ) {
+	public static function get_pagination_data( $total_items, $per_page = 20, $current_page = 1 ) {
 		return array(
 			"total_items"  => $total_items,
 			"per_page"     => $per_page,

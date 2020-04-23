@@ -5,14 +5,15 @@ namespace Stackonet\WP\Framework\Supports;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class Validator
+ * Class Validate
+ * @package Stackonet\WP\Framework\Supports
  */
 class Validate {
 
 	/**
 	 * Check if the value is present.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return boolean
 	 */
@@ -25,7 +26,7 @@ class Validate {
 	/**
 	 * Check if the value is formatted as a valid URL.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -36,7 +37,7 @@ class Validate {
 	/**
 	 * Check if the value is a valid email.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -48,7 +49,7 @@ class Validate {
 	 * Check if the value is an integer, including
 	 * numbers within strings. 1 and '1' are both classed as integers.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -67,7 +68,7 @@ class Validate {
 	 * Octal (e.g. 0777) notation is allowed too
 	 * but only without sign, decimal and exponential part.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -78,7 +79,7 @@ class Validate {
 	/**
 	 * Check if the value is alphabetic letters only.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -89,7 +90,7 @@ class Validate {
 	/**
 	 * Check if the value is alphanumeric.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -101,7 +102,7 @@ class Validate {
 	 * Check if the value is alphanumeric.
 	 * Dashes and underscores are permitted.
 	 *
-	 * @param  string $value
+	 * @param string $value
 	 *
 	 * @return boolean
 	 */
@@ -112,7 +113,7 @@ class Validate {
 	/**
 	 * Check if the value is an array
 	 *
-	 * @param  array $value
+	 * @param array $value
 	 *
 	 * @return boolean
 	 */
@@ -124,9 +125,9 @@ class Validate {
 	 * Check if string length is greater than or equal to given int.
 	 * To check the size of a number, pass the optional number option.
 	 *
-	 * @param  mixed $value
-	 * @param  integer $min_value
-	 * @param  boolean $is_number
+	 * @param mixed $value
+	 * @param integer $min_value
+	 * @param boolean $is_number
 	 *
 	 * @return boolean
 	 */
@@ -142,9 +143,9 @@ class Validate {
 	 * Check if string length is less than or equal to given int.
 	 * To check the size of a number, pass the optional number option.
 	 *
-	 * @param  mixed $value
-	 * @param  integer $max_value
-	 * @param  boolean $is_number
+	 * @param mixed $value
+	 * @param integer $max_value
+	 * @param boolean $is_number
 	 *
 	 * @return boolean
 	 */
@@ -160,20 +161,20 @@ class Validate {
 	 * Checks if the value is within the intervals defined.
 	 * This check is inclusive, so 5 is between 5 and 10.
 	 *
-	 * @param  mixed $value
-	 * @param  integer $min_value
-	 * @param  integer $max_value
+	 * @param mixed $value
+	 * @param integer $min_value
+	 * @param integer $max_value
 	 *
 	 * @return boolean
 	 */
 	public static function between( $value, $min_value, $max_value ) {
-		return ( $value >= $min_value && $value <= $max_value ) ? true : false;
+		return $value >= $min_value && $value <= $max_value;
 	}
 
 	/**
 	 * Check if the given input is a valid date.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return boolean
 	 */
@@ -205,8 +206,8 @@ class Validate {
 	/**
 	 * Check if the given input has a match for the regular expression given
 	 *
-	 * @param  mixed $value
-	 * @param  string $regex
+	 * @param mixed $value
+	 * @param string $regex
 	 *
 	 * @return boolean
 	 */
@@ -219,7 +220,7 @@ class Validate {
 	 * one of the following values: 'yes', 'on', '1', 1, true, or 'true'.
 	 * This can be used for determining if an HTML checkbox has been checked.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return boolean
 	 */
@@ -230,7 +231,7 @@ class Validate {
 	/**
 	 * Check if the value is a valid IP address.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return boolean
 	 */
@@ -241,7 +242,7 @@ class Validate {
 	/**
 	 * Check if the value is a boolean.
 	 *
-	 * @param  mixed $value
+	 * @param mixed $value
 	 *
 	 * @return boolean
 	 */
@@ -253,8 +254,8 @@ class Validate {
 	 * Checks if one given input matches the other.
 	 * For example, checking if password matches password_confirm.
 	 *
-	 * @param  mixed $value
-	 * @param  mixed $match_value
+	 * @param mixed $value
+	 * @param mixed $match_value
 	 *
 	 * @return boolean
 	 */
