@@ -73,11 +73,14 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 
 	/**
 	 * Cache group
+	 *
 	 * @var string
 	 */
 	protected $cache_group = 'stackonet';
 
 	/**
+	 * Table column info
+	 *
 	 * @var array
 	 */
 	protected static $columns = [];
@@ -85,7 +88,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Model constructor.
 	 *
-	 * @param array $data
+	 * @param mixed $data
 	 */
 	public function __construct( $data = [] ) {
 		if ( $data ) {
@@ -137,13 +140,14 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table = $this->get_table_name();
 
-		$item = $this->get_cache( "$table:$id" );
+		$cache_key = $this->get_cache_key_for_single_item( $id );
+		$item      = $this->get_cache( $cache_key );
 		if ( false === $item ) {
 			$sql  = "SELECT * FROM {$table} WHERE {$this->primaryKey} = {$this->primaryKeyType}";
 			$item = $wpdb->get_row( $wpdb->prepare( $sql, $id ), ARRAY_A );
 
 			// Set cache
-			$this->set_cache( "$table:$id", $item );
+			$this->set_cache( $cache_key, $item );
 		}
 
 		return $item;
@@ -200,6 +204,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$format = $this->get_data_format_for_db( array_keys( $_data ) );
 
 		$wpdb->insert( $table, $_data, array_values( $format ) );
+
+		// Update cache change
+		$this->set_cache_last_changed();
 
 		return $wpdb->insert_id;
 	}
@@ -290,7 +297,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		// Delete cache
-		$this->delete_cache( "$table:$id" );
+		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
 
 		return false;
 	}
@@ -304,12 +311,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function delete( $id = 0 ) {
 		global $wpdb;
-		$table = $wpdb->prefix . $this->table;
+		$table = $this->get_table_name();
 
 		$query = $wpdb->delete( $table, [ $this->primaryKey => $id ], $this->primaryKeyType );
 
 		// Delete cache
-		$this->delete_cache( "$table:$id" );
+		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
 
 		return ( false !== $query );
 	}
@@ -329,7 +336,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		);
 
 		// Delete cache
-		$this->delete_cache( "$table:$id" );
+		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
 
 		return ( false !== $query );
 	}
@@ -347,7 +354,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$query = $wpdb->update( $table, [ $this->deleted_at => null ], [ $this->primaryKey => $id ] );
 
 		// Delete cache
-		$this->delete_cache( "$table:$id" );
+		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
 
 		return ( false !== $query );
 	}
@@ -677,7 +684,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$expire = MONTH_IN_SECONDS;
 		}
 		wp_cache_set( $key, $data, $this->cache_group, $expire );
-		$this->set_cache_last_changed();
 	}
 
 	/**
@@ -692,6 +698,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 
 	/**
 	 * Set cache last changed
+	 * Use this method when you create, update or delete item
 	 */
 	public function set_cache_last_changed() {
 		wp_cache_set( 'last_changed', microtime(), $this->cache_group );
@@ -707,7 +714,21 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	public function get_cache_key_for_collection( array $args = [] ) {
 		$last_changed = wp_cache_get_last_changed( $this->cache_group );
 		$hash         = md5( serialize( $args ) );
+		$table        = $this->get_table_name();
 
-		return "collection:$this->table:$hash:$last_changed";
+		return "$table:$hash:$last_changed";
+	}
+
+	/**
+	 * Get cache key for single item
+	 *
+	 * @param int $id
+	 *
+	 * @return string
+	 */
+	public function get_cache_key_for_single_item( $id ) {
+		$table = $this->get_table_name();
+
+		return "$table:$id";
 	}
 }
