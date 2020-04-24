@@ -72,9 +72,10 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	protected $perPage = 20;
 
 	/**
+	 * Cache group
 	 * @var string
 	 */
-	protected $cache_group;
+	protected $cache_group = 'stackonet';
 
 	/**
 	 * @var array
@@ -103,19 +104,26 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		list( $per_page, $offset, $orderby, $order ) = $this->get_pagination_and_order_data( $args );
 
 		global $wpdb;
-		$table = $wpdb->prefix . $this->table;
+		$table = $this->get_table_name();
 
-		$query = "SELECT * FROM {$table} WHERE 1=1";
+		$cache_key = $this->get_cache_key_for_collection( $args );
+		$items     = $this->get_cache( $cache_key );
+		if ( false === $items ) {
+			$query = "SELECT * FROM {$table} WHERE 1=1";
 
-		if ( isset( $args[ $this->created_by ] ) && is_numeric( $args[ $this->created_by ] ) ) {
-			$query .= $wpdb->prepare( " AND {$this->created_by} = %d", intval( $args[ $this->created_by ] ) );
+			if ( isset( $args[ $this->created_by ] ) && is_numeric( $args[ $this->created_by ] ) ) {
+				$query .= $wpdb->prepare( " AND {$this->created_by} = %d", intval( $args[ $this->created_by ] ) );
+			}
+
+			$query .= " ORDER BY {$orderby} {$order}";
+			$query .= $wpdb->prepare( " LIMIT %d OFFSET %d", $per_page, $offset );
+			$items = $wpdb->get_results( $query, ARRAY_A );
+
+			// Set cache for one day
+			$this->set_cache( $cache_key, $items, DAY_IN_SECONDS );
 		}
 
-		$query   .= " ORDER BY {$orderby} {$order}";
-		$query   .= $wpdb->prepare( " LIMIT %d OFFSET %d", $per_page, $offset );
-		$results = $wpdb->get_results( $query, ARRAY_A );
-
-		return $results;
+		return $items;
 	}
 
 	/**
@@ -127,10 +135,16 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function find_by_id( $id ) {
 		global $wpdb;
-		$table = $wpdb->prefix . $this->table;
+		$table = $this->get_table_name();
 
-		$sql  = "SELECT * FROM {$table} WHERE {$this->primaryKey} = {$this->primaryKeyType}";
-		$item = $wpdb->get_row( $wpdb->prepare( $sql, $id ), ARRAY_A );
+		$item = $this->get_cache( "$table:$id" );
+		if ( false === $item ) {
+			$sql  = "SELECT * FROM {$table} WHERE {$this->primaryKey} = {$this->primaryKeyType}";
+			$item = $wpdb->get_row( $wpdb->prepare( $sql, $id ), ARRAY_A );
+
+			// Set cache
+			$this->set_cache( "$table:$id", $item );
+		}
 
 		return $item;
 	}
@@ -233,7 +247,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function update( array $data ) {
 		global $wpdb;
-		$table        = $wpdb->prefix . $this->table;
+		$table        = $this->get_table_name();
 		$id           = isset( $data[ $this->primaryKey ] ) ? intval( $data[ $this->primaryKey ] ) : 0;
 		$current_time = current_time( 'mysql' );
 
@@ -275,6 +289,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			return true;
 		}
 
+		// Delete cache
+		$this->delete_cache( "$table:$id" );
+
 		return false;
 	}
 
@@ -289,7 +306,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table = $wpdb->prefix . $this->table;
 
-		return ( false !== $wpdb->delete( $table, [ $this->primaryKey => $id ], $this->primaryKeyType ) );
+		$query = $wpdb->delete( $table, [ $this->primaryKey => $id ], $this->primaryKeyType );
+
+		// Delete cache
+		$this->delete_cache( "$table:$id" );
+
+		return ( false !== $query );
 	}
 
 	/**
@@ -301,10 +323,13 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function trash( $id ) {
 		global $wpdb;
-		$table = $wpdb->prefix . $this->table;
+		$table = $this->get_table_name();
 		$query = $wpdb->update( $table, [ $this->deleted_at => current_time( 'mysql' ) ],
 			[ $this->primaryKey => $id ]
 		);
+
+		// Delete cache
+		$this->delete_cache( "$table:$id" );
 
 		return ( false !== $query );
 	}
@@ -318,8 +343,11 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function restore( $id ) {
 		global $wpdb;
-		$table = $wpdb->prefix . $this->table;
+		$table = $this->get_table_name();
 		$query = $wpdb->update( $table, [ $this->deleted_at => null ], [ $this->primaryKey => $id ] );
+
+		// Delete cache
+		$this->delete_cache( "$table:$id" );
 
 		return ( false !== $query );
 	}
@@ -518,23 +546,29 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			return static::$columns[ $table ];
 		}
 
-		global $wpdb;
-		$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A );
+		$column_info = $this->get_cache( 'column_info_' . $table );
+		if ( $column_info === false ) {
+			global $wpdb;
+			$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A );
 
-		foreach ( $results as $column ) {
-			$length = static::get_type_and_length( $column );
+			foreach ( $results as $column ) {
+				$length = static::get_type_and_length( $column );
 
-			static::$columns[ $table ][ $column['Field'] ] = [
-				'field'       => $column['Field'],
-				'default'     => $column['Default'],
-				'type'        => $length['type'],
-				'length'      => $length['length'],
-				'nullable'    => strtolower( $column['Null'] ) == 'yes',
-				'data_format' => $this->get_data_format_for_type( $length['type'] ),
-			];
+				static::$columns[ $table ][ $column['Field'] ] = [
+					'field'       => $column['Field'],
+					'default'     => $column['Default'],
+					'type'        => $length['type'],
+					'length'      => $length['length'],
+					'nullable'    => strtolower( $column['Null'] ) == 'yes',
+					'data_format' => $this->get_data_format_for_type( $length['type'] ),
+				];
+			}
+
+			$this->set_cache( 'column_info_' . $table, static::$columns[ $table ] );
+			$column_info = static::$columns[ $table ];
 		}
 
-		return static::$columns[ $table ];
+		return $column_info;
 	}
 
 	/**
@@ -544,7 +578,10 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return string
 	 */
-	public function get_table_name( $table ) {
+	public function get_table_name( $table = null ) {
+		if ( empty( $table ) ) {
+			$table = $this->table;
+		}
 		global $wpdb;
 		if ( false !== strpos( $table, $wpdb->prefix ) ) {
 			return $table;
@@ -614,5 +651,63 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		return '%s';
+	}
+
+	/**
+	 * Retrieves the cache contents from the cache by key and group.
+	 *
+	 * @param int|string $key The key under which the cache contents are stored.
+	 *
+	 * @return bool|mixed False on failure to retrieve contents or the cache contents on success
+	 * @see WP_Object_Cache::get()
+	 */
+	public function get_cache( $key ) {
+		return wp_cache_get( $key, $this->cache_group );
+	}
+
+	/**
+	 * Saves the data to the cache.
+	 *
+	 * @param int|string $key The cache key to use for retrieval later.
+	 * @param mixed $data The contents to store in the cache.
+	 * @param int $expire Optional. When to expire the cache contents, in seconds. Default 0 (no expiration).
+	 */
+	public function set_cache( $key, $data, $expire = 0 ) {
+		if ( empty( $expire ) ) {
+			$expire = MONTH_IN_SECONDS;
+		}
+		wp_cache_set( $key, $data, $this->cache_group, $expire );
+		$this->set_cache_last_changed();
+	}
+
+	/**
+	 * Removes the cache contents matching key and group.
+	 *
+	 * @param int|string $key What the contents in the cache are called.
+	 */
+	public function delete_cache( $key ) {
+		wp_cache_delete( $key, $this->cache_group );
+		$this->set_cache_last_changed();
+	}
+
+	/**
+	 * Set cache last changed
+	 */
+	public function set_cache_last_changed() {
+		wp_cache_set( 'last_changed', microtime(), $this->cache_group );
+	}
+
+	/**
+	 * Get cache key for collection
+	 *
+	 * @param array $args
+	 *
+	 * @return string
+	 */
+	public function get_cache_key_for_collection( array $args = [] ) {
+		$last_changed = wp_cache_get_last_changed( $this->cache_group );
+		$hash         = md5( serialize( $args ) );
+
+		return "collection:$this->table:$hash:$last_changed";
 	}
 }
