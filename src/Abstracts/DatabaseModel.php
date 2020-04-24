@@ -553,7 +553,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			return static::$columns[ $table ];
 		}
 
-		$column_info = $this->get_cache( 'column_info_' . $table );
+		$cache_key   = $table . ':column_info';
+		$column_info = $this->get_cache( $cache_key );
 		if ( $column_info === false ) {
 			global $wpdb;
 			$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A );
@@ -571,7 +572,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 				];
 			}
 
-			$this->set_cache( 'column_info_' . $table, static::$columns[ $table ] );
+			$this->set_cache( $cache_key, static::$columns[ $table ] );
 			$column_info = static::$columns[ $table ];
 		}
 
