@@ -4,6 +4,10 @@ namespace Stackonet\WP\Framework\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class BillingEmailTemplate
+ * @package Stackonet\WP\Framework\Emails
+ */
 class BillingEmailTemplate extends EmailTemplateBase {
 
 	/**

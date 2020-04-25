@@ -4,6 +4,10 @@ namespace Stackonet\WP\Framework\Supports;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class ArrayHelper
+ * @package Stackonet\WP\Framework\Supports
+ */
 class ArrayHelper {
 	/**
 	 * Insert the given element after the given key in the array

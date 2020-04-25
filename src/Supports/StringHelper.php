@@ -2,6 +2,10 @@
 
 namespace Stackonet\WP\Framework\Supports;
 
+/**
+ * Class StringHelper
+ * @package Stackonet\WP\Framework\Supports
+ */
 class StringHelper {
 
 	/**

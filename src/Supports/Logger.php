@@ -6,6 +6,10 @@ use Exception;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class Logger
+ * @package Stackonet\WP\Framework\Supports
+ */
 class Logger {
 	/**
 	 * Log error to error log

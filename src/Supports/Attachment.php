@@ -10,7 +10,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class Attachment
  * This class is just to keep backward compatibility
- * @see
  */
 class Attachment extends Uploader {
 

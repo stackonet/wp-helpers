@@ -219,15 +219,19 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array|self
 	 */
 	public function read( $data ) {
-		if ( is_numeric( $data ) ) {
-			$item = $this->find_by_id( $data );
-			if ( empty( $item ) && is_array( $item ) ) {
-				return $item;
-			}
-		}
-
 		if ( $data instanceof Data ) {
 			return $data->data;
+		}
+
+		if ( is_numeric( $data ) ) {
+			$item = $this->find_by_id( $data );
+			if ( $item instanceof Data ) {
+				return $item->data;
+			}
+
+			if ( is_array( $item ) ) {
+				$data = $item;
+			}
 		}
 
 		$default = $this->get_default_data();

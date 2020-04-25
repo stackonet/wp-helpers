@@ -6,6 +6,10 @@ use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class RestClient
+ * @package Stackonet\WP\Framework\Supports
+ */
 class RestClient {
 	/**
 	 * API base URL

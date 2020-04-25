@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Interface DataStoreInterface
- * @package App\Interfaces
+ * @package Stackonet\WP\Framework\Interfaces
  */
 interface DataStoreInterface extends ArrayAccess, JsonSerializable {
 

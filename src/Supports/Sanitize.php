@@ -5,9 +5,10 @@ namespace Stackonet\WP\Framework\Supports;
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Class Sanitize
  * A simple wrapper class of static methods sanitizing value.
  *
- * @class Sanitize
+ * @package Stackonet\WP\Framework\Supports
  */
 class Sanitize {
 	/**

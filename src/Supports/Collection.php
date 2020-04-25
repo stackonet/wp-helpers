@@ -7,6 +7,10 @@ use Stackonet\WP\Framework\Interfaces\CollectionInterface;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class Collection
+ * @package Stackonet\WP\Framework\Supports
+ */
 class Collection implements CollectionInterface {
 
 	/**

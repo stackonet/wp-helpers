@@ -3,13 +3,16 @@
 namespace Stackonet\WP\Framework\REST;
 
 use DateTime;
-use DateTimeZone;
 use Exception;
 use WP_REST_Controller;
 use WP_REST_Response;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class ApiController
+ * @package Stackonet\WP\Framework\REST
+ */
 class ApiController extends WP_REST_Controller {
 
 	/**

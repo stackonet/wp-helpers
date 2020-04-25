@@ -5,10 +5,8 @@ namespace Stackonet\WP\Framework\Interfaces;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Collection Interface
- *
- * @package DialogContactForm
- * @since   3.0.0
+ * Interface CollectionInterface
+ * @package Stackonet\WP\Framework\Interfaces
  */
 interface CollectionInterface extends \ArrayAccess, \Countable, \IteratorAggregate {
 

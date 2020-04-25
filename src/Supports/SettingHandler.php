@@ -4,7 +4,6 @@ namespace Stackonet\WP\Framework\Supports;
 
 use WP_Error;
 
-// Exit if accessed directly
 defined( 'ABSPATH' ) || exit;
 
 /**

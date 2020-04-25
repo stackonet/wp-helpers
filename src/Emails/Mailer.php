@@ -6,6 +6,10 @@ use Exception;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Class Mailer
+ * @package Stackonet\WP\Framework\Emails
+ */
 class Mailer extends ActionEmailTemplate {
 
 	/**

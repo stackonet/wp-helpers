@@ -5,6 +5,12 @@ namespace Stackonet\WP\Framework\Abstracts;
 use ArrayAccess;
 use JsonSerializable;
 
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Class Data
+ * @package Stackonet\WP\Framework\Abstracts
+ */
 class Data implements ArrayAccess, JsonSerializable {
 
 	/**
@@ -61,7 +67,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return mixed The key's value, or the default value
 	 */
-	public function get( $key, $default = null ) {
+	public function get( $key, $default = '' ) {
 		return $this->has( $key ) ? $this->data[ $key ] : $default;
 	}
 
