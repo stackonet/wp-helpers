@@ -40,12 +40,19 @@ class RestClient {
 	protected $request_args = array();
 
 	/**
+	 * Global parameters that should send on every request
+	 *
+	 * @var array
+	 */
+	protected $global_parameters = [];
+
+	/**
 	 * RestClient constructor.
 	 *
 	 * @param string $api_base_url
 	 */
 	public function __construct( $api_base_url = null ) {
-		if ( ! empty( $api_base_url ) ) {
+		if ( filter_var( $api_base_url, FILTER_VALIDATE_URL ) ) {
 			$this->api_base_url = $api_base_url;
 		}
 		$this->user_agent = get_option( 'blogname' );
@@ -179,6 +186,9 @@ class RestClient {
 			if ( in_array( $method, array( 'POST', 'PUT' ) ) ) {
 				$api_request_args['body'] = $request_body;
 			} else {
+				if ( count( $this->global_parameters ) ) {
+					$request_body = array_merge( $request_body, $this->get_global_parameters() );
+				}
 				$request_url = add_query_arg( $request_body, $request_url );
 			}
 		}
@@ -203,5 +213,26 @@ class RestClient {
 		}
 
 		return $response_body;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function get_global_parameters() {
+		return $this->global_parameters;
+	}
+
+	/**
+	 * Set global parameter
+	 *
+	 * @param string $key
+	 * @param mixed $value
+	 *
+	 * @return self
+	 */
+	public function set_global_parameter( $key, $value ) {
+		$this->global_parameters[ $key ] = $value;
+
+		return $this;
 	}
 }
