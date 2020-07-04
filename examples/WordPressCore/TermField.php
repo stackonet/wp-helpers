@@ -4,6 +4,9 @@ namespace Stackonet\WP\Examples\WordPressCore;
 
 use WP_Term;
 
+// If this file is called directly, abort.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class TermField
  * Example: how to add custom field on term add and edit form
