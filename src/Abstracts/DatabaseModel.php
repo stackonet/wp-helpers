@@ -104,22 +104,28 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	public function find( $args = [] ) {
-		list( $per_page, $offset, $orderby, $order ) = $this->get_pagination_and_order_data( $args );
-
 		global $wpdb;
 		$table = $this->get_table_name();
 
 		$cache_key = $this->get_cache_key_for_collection( $args );
 		$items     = $this->get_cache( $cache_key );
 		if ( false === $items ) {
+			list( $per_page, $offset ) = $this->get_pagination_and_order_data( $args );
+			$order_by = $this->get_order_by( $args );
+
 			$query = "SELECT * FROM {$table} WHERE 1=1";
 
 			if ( isset( $args[ $this->created_by ] ) && is_numeric( $args[ $this->created_by ] ) ) {
 				$query .= $wpdb->prepare( " AND {$this->created_by} = %d", intval( $args[ $this->created_by ] ) );
 			}
 
-			$query .= " ORDER BY {$orderby} {$order}";
-			$query .= $wpdb->prepare( " LIMIT %d OFFSET %d", $per_page, $offset );
+			$query .= " ORDER BY {$order_by}";
+			if ( $per_page > 0 ) {
+				$query .= $wpdb->prepare( " LIMIT %d", $per_page );
+			}
+			if ( $offset >= 0 ) {
+				$query .= $wpdb->prepare( " OFFSET %d", $offset );
+			}
 			$items = $wpdb->get_results( $query, ARRAY_A );
 
 			// Set cache for one day
@@ -326,6 +332,29 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
+	 * Delete multiple records
+	 *
+	 * @param array $ids
+	 *
+	 * @return bool
+	 */
+	public function batch_delete( array $ids = [] ) {
+		global $wpdb;
+		$table = $this->get_table_name();
+		$ids   = array_map( 'absint', $ids );
+		$sql   = "DELETE FROM `{$table}` WHERE {$this->primaryKey} IN(" . implode( ',', $ids ) . ")";
+
+		$query = $wpdb->query( $sql );
+
+		// Delete cache
+		foreach ( $ids as $id ) {
+			$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
+		}
+
+		return (bool) $query;
+	}
+
+	/**
 	 * Send an item to trash
 	 *
 	 * @param int $id
@@ -346,6 +375,30 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
+	 * Trash multiple records
+	 *
+	 * @param array $ids
+	 *
+	 * @return bool
+	 */
+	public function batch_trash( array $ids = [] ) {
+		global $wpdb;
+		$table = $this->get_table_name();
+		$ids   = array_map( 'absint', $ids );
+		$sql   = $wpdb->prepare( "UPDATE `{$table}` SET `{$this->deleted_at}` = %s", current_time( 'mysql' ) );
+		$sql   .= " WHERE {$this->primaryKey} IN(" . implode( ',', $ids ) . ")";
+
+		$query = $wpdb->query( $sql );
+
+		// Delete cache
+		foreach ( $ids as $id ) {
+			$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
+		}
+
+		return (bool) $query;
+	}
+
+	/**
 	 * Restore an item from trash
 	 *
 	 * @param int $id
@@ -361,6 +414,30 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
 
 		return ( false !== $query );
+	}
+
+	/**
+	 * Restore multiple records
+	 *
+	 * @param array $ids
+	 *
+	 * @return bool
+	 */
+	public function batch_restore( array $ids = [] ) {
+		global $wpdb;
+		$table = $this->get_table_name();
+		$ids   = array_map( 'absint', $ids );
+		$sql   = "UPDATE `{$table}` SET `{$this->deleted_at}` = NULL";
+		$sql   .= " WHERE {$this->primaryKey} IN(" . implode( ',', $ids ) . ")";
+
+		$query = $wpdb->query( $sql );
+
+		// Delete cache
+		foreach ( $ids as $id ) {
+			$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
+		}
+
+		return (bool) $query;
 	}
 
 	/**
@@ -389,6 +466,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	public static function getPaginationMetadata( array $args ) {
+		_deprecated_function( __METHOD__, '1.1.5', __CLASS__ . '::get_pagination()' );
 		$data = wp_parse_args( $args, array(
 			"totalCount"     => 0,
 			"limit"          => 10,
@@ -452,18 +530,70 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	protected function get_pagination_and_order_data( array $args ) {
-		$per_page     = isset( $args['per_page'] ) ? absint( $args['per_page'] ) : $this->perPage;
 		$paged        = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
-		$current_page = $paged < 1 ? 1 : $paged;
-		$offset       = ( $current_page - 1 ) * $per_page;
-		$orderby      = $this->primaryKey;
-		$columnsNames = $this->get_columns_names();
-		if ( isset( $args['orderby'] ) && in_array( $args['orderby'], $columnsNames ) ) {
-			$orderby = $args['orderby'];
-		}
-		$order = isset( $args['order'] ) && 'ASC' == $args['order'] ? 'ASC' : 'DESC';
+		$current_page = isset( $args['page'] ) ? absint( $args['page'] ) : $paged;
+
+		$per_page = isset( $args['per_page'] ) ? intval( $args['per_page'] ) : $this->perPage;
+		$offset   = $this->calculate_offset( $current_page, $per_page );
+
+		$orderby = isset( $args['orderby'] ) && in_array( $args['orderby'], $this->get_columns_names() )
+			? $args['orderby'] : $this->primaryKey;
+		$order   = isset( $args['order'] ) && 'ASC' == $args['order'] ? 'ASC' : 'DESC';
 
 		return array( $per_page, $offset, $orderby, $order );
+	}
+
+	/**
+	 * Calculate offset
+	 *
+	 * @param int $current_page
+	 * @param int $per_page
+	 *
+	 * @return int
+	 */
+	protected function calculate_offset( $current_page = 1, $per_page = 0 ) {
+		if ( empty( $per_page ) ) {
+			$per_page = $this->perPage;
+		}
+
+		$page = max( 1, $current_page );
+
+		return (int) ( $page - 1 ) * $per_page;
+	}
+
+	/**
+	 * Get order_by data
+	 *
+	 * @param array $args
+	 *
+	 * @return string
+	 */
+	protected function get_order_by( array $args ) {
+		$columnsNames = $this->get_columns_names();
+		$orders_by    = isset( $args['order_by'] ) ? $args['order_by'] : [];
+		$orders_by    = is_string( $orders_by ) ? explode( ",", $orders_by ) : $orders_by;
+		$valid_orders = [ 'ASC', 'DESC' ];
+
+		if ( count( $orders_by ) < 1 ) {
+			// For backward compatibility
+			$column_name = isset( $args['orderby'] ) && in_array( $args['orderby'], $columnsNames ) ? $args['orderby'] : $this->primaryKey;
+			$order       = isset( $args['order'] ) && 'ASC' == strtoupper( $args['order'] ) ? 'ASC' : 'DESC';
+			$orders_by[] = $column_name . ' ' . $order;
+		}
+
+		$final_order_by = [];
+		foreach ( $orders_by as $order_by ) {
+			$_order      = explode( " ", trim( $order_by ) );
+			$column_name = ( isset( $_order[0] ) && in_array( $_order[0], $columnsNames ) ) ? $_order[0] : '';
+			$order       = ( isset( $_order[1] ) && in_array( strtoupper( $_order[1] ), $valid_orders ) ) ? $_order[1] : '';
+
+			if ( empty( $column_name ) || empty( $order ) ) {
+				continue;
+			}
+			$final_order_by[] = $column_name . ' ' . $order;
+		}
+
+		return implode( ", ", $final_order_by );
 	}
 
 	/**
