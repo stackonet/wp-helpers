@@ -112,11 +112,20 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		if ( false === $items ) {
 			list( $per_page, $offset ) = $this->get_pagination_and_order_data( $args );
 			$order_by = $this->get_order_by( $args );
+			$status   = isset( $args['status'] ) ? $args['status'] : null;
 
 			$query = "SELECT * FROM {$table} WHERE 1=1";
 
 			if ( isset( $args[ $this->created_by ] ) && is_numeric( $args[ $this->created_by ] ) ) {
 				$query .= $wpdb->prepare( " AND {$this->created_by} = %d", intval( $args[ $this->created_by ] ) );
+			}
+
+			if ( in_array( $this->deleted_at, $this->get_columns_names() ) ) {
+				if ( 'trash' == $status ) {
+					$query .= " AND {$this->deleted_at} IS NOT NULL";
+				} else {
+					$query .= " AND {$this->deleted_at} IS NULL";
+				}
 			}
 
 			$query .= " ORDER BY {$order_by}";
@@ -168,7 +177,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function create( array $data ) {
 		global $wpdb;
-		$table        = $wpdb->prefix . $this->table;
+		$table        = $this->get_table_name();
 		$current_time = current_time( 'mysql' );
 
 		$tableColumns = $this->get_column_info();
@@ -207,7 +216,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$_data[ $this->deleted_at ] = null;
 		}
 
-		$format = $this->get_data_format_for_db( array_keys( $_data ) );
+		$format = $this->get_data_format_for_db( $_data );
 
 		$wpdb->insert( $table, $_data, array_values( $format ) );
 
@@ -215,6 +224,69 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$this->set_cache_last_changed();
 
 		return $wpdb->insert_id;
+	}
+
+	/**
+	 * Create multiple record
+	 *
+	 * @param array $data
+	 *
+	 * @return bool
+	 */
+	public function create_multiple( array $data ) {
+		global $wpdb;
+		$table         = $this->get_table_name();
+		$current_time  = current_time( 'mysql' );
+		$tableColumns  = $this->get_column_info();
+		$columns_names = array_keys( $tableColumns );
+
+		$values = [];
+
+		foreach ( $data as $index => $item ) {
+			$_data = [];
+			foreach ( $tableColumns as $key => $tableColumn ) {
+				$temp_data     = isset( $item[ $key ] ) ? $item[ $key ] : $tableColumn['default'];
+				$_data[ $key ] = $this->serialize( $temp_data );
+			}
+
+			// Update Author ID
+			if ( array_key_exists( $this->created_by, $tableColumns ) ) {
+				$_data[ $this->created_by ] = isset( $data[ $this->created_by ] ) ? intval( $data[ $this->created_by ] )
+					: get_current_user_id();
+			}
+
+			// Update created time
+			if ( array_key_exists( $this->created_at, $tableColumns ) ) {
+				$_data[ $this->created_at ] = $current_time;
+			}
+
+			// Update updated time
+			if ( array_key_exists( $this->updated_at, $tableColumns ) ) {
+				$_data[ $this->updated_at ] = $current_time;
+			}
+
+			// Set deleted at time as null
+			if ( array_key_exists( $this->deleted_at, $tableColumns ) ) {
+				$_data[ $this->deleted_at ] = 'NULL';
+			}
+
+			if ( array_key_exists( $this->primaryKey, $_data ) ) {
+				unset( $_data[ $this->primaryKey ] );
+			}
+
+			$_format  = $this->get_data_format_for_db( $_data );
+			$values[] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $_data );
+		}
+
+		if ( in_array( $this->primaryKey, $columns_names ) ) {
+			$index = array_search( $this->primaryKey, $columns_names );
+			unset( $columns_names[ $index ] );
+		}
+
+		$sql   = "INSERT INTO `{$table}` (" . implode( ", ", $columns_names ) . ") VALUES \n" . implode( ",\n", $values ) . ";";
+		$query = $wpdb->query( $sql );
+
+		return (bool) $query;
 	}
 
 	/**
@@ -666,7 +738,11 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		$formats = [];
-		foreach ( $fields as $field ) {
+		foreach ( $fields as $index => $field ) {
+			if ( is_string( $index ) && isset( $columns[ $index ] ) ) {
+				$formats[ $index ] = is_null( $field ) ? 'NULL' : $columns[ $index ]['data_format'];
+				continue;
+			}
 			if ( isset( $columns[ $field ] ) ) {
 				$formats[ $field ] = $columns[ $field ]['data_format'];
 			}
