@@ -120,6 +120,16 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 				$query .= $wpdb->prepare( " AND {$this->created_by} = %d", intval( $args[ $this->created_by ] ) );
 			}
 
+			if ( isset( $args[ $this->primaryKey . '__in' ] ) && is_array( $args[ $this->primaryKey . '__in' ] ) ) {
+				if ( $this->primaryKeyType == '%d' ) {
+					$ids__in = array_map( 'intval', $args[ $this->primaryKey . '__in' ] );
+					$query   .= " AND {$this->primaryKey} IN(" . implode( ",", $ids__in ) . ")";
+				} else {
+					$ids__in = array_map( 'esc_sql', $args[ $this->primaryKey . '__in' ] );
+					$query   .= " AND {$this->primaryKey} IN('" . implode( "', '", $ids__in ) . "')";
+				}
+			}
+
 			if ( in_array( $this->deleted_at, $this->get_columns_names() ) ) {
 				if ( 'trash' == $status ) {
 					$query .= " AND {$this->deleted_at} IS NOT NULL";
@@ -224,41 +234,60 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
-	 * Method to read a record.
+	 * Update multiple record
 	 *
-	 * @param mixed $data
+	 * @param array $data
 	 *
-	 * @return array|self
+	 * @return bool
 	 */
-	public function read( $data ) {
-		if ( $data instanceof Data ) {
-			return $data->data;
+	public function update_multiple( array $data ) {
+		$ids           = wp_list_pluck( $data, $this->primaryKey );
+		$default       = $this->find( [ $this->primaryKey . '__in' => $ids, 'per_page' => count( $ids ) ] );
+		$default_items = [];
+		foreach ( $default as $item ) {
+			$default_items[ $item[ $this->primaryKey ] ] = $item;
 		}
 
-		if ( is_numeric( $data ) ) {
-			$item = $this->find_by_id( $data );
-			if ( $item instanceof Data ) {
-				return $item->data;
+		global $wpdb;
+		$table         = $this->get_table_name();
+		$current_time  = current_time( 'mysql' );
+		$columns_names = $this->get_columns_names();
+
+		$values = [];
+		foreach ( $data as $index => $item ) {
+			// Continue if primary key is not set
+			if ( ! isset( $item[ $this->primaryKey ] ) ) {
+				continue;
+			}
+			// Continue if record is not found on database
+			if ( ! isset( $default_items[ $item[ $this->primaryKey ] ] ) ) {
+				continue;
 			}
 
-			if ( is_array( $item ) ) {
-				$data = $item;
-			}
+			list( $_data, $_format ) = $this->format_item_for_db( $item, $default_items[ $item[ $this->primaryKey ] ], $current_time );
+
+			$values[] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $_data );
 		}
 
-		$default = $this->get_default_data();
-
-		if ( is_array( $data ) ) {
-			$item = [];
-			foreach ( $default as $columnName => $default_value ) {
-				$temp_data           = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default_value;
-				$item[ $columnName ] = $this->unserialize( $temp_data );
+		$update_columns = [];
+		foreach ( $columns_names as $columns_name ) {
+			if ( $columns_name == $this->primaryKey ) {
+				continue;
 			}
-
-			return $item;
+			$update_columns[] = "{$columns_name}=VALUES({$columns_name})";
 		}
 
-		return $default;
+		$sql = "INSERT INTO `{$table}` (" . implode( ", ", $columns_names ) . ") VALUES \n" . implode( ",\n", $values );
+		$sql .= "ON DUPLICATE KEY UPDATE \n" . implode( ", ", $update_columns );
+
+		$query = $wpdb->query( $sql );
+
+		// Delete cache
+		foreach ( $ids as $id ) {
+			$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
+		}
+
+		return (bool) $query;
 	}
 
 	/**
@@ -444,6 +473,44 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		return (bool) $query;
+	}
+
+	/**
+	 * Method to read a record.
+	 *
+	 * @param mixed $data
+	 *
+	 * @return array|self
+	 */
+	public function read( $data ) {
+		if ( $data instanceof Data ) {
+			return $data->data;
+		}
+
+		if ( is_numeric( $data ) ) {
+			$item = $this->find_by_id( $data );
+			if ( $item instanceof Data ) {
+				return $item->data;
+			}
+
+			if ( is_array( $item ) ) {
+				$data = $item;
+			}
+		}
+
+		$default = $this->get_default_data();
+
+		if ( is_array( $data ) ) {
+			$item = [];
+			foreach ( $default as $columnName => $default_value ) {
+				$temp_data           = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $default_value;
+				$item[ $columnName ] = $this->unserialize( $temp_data );
+			}
+
+			return $item;
+		}
+
+		return $default;
 	}
 
 	/**
@@ -891,21 +958,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$current_time = $current_time = current_time( 'mysql' );
 		}
 
+		$mode = ! empty( $data[ $this->primaryKey ] ) ? 'update' : 'create';
+
 		$_data = [];
 		foreach ( $default_data as $key => $value ) {
 			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $value;
 			$_data[ $key ] = $this->serialize( $temp_data );
-		}
-
-		// Update Author ID
-		if ( array_key_exists( $this->created_by, $default_data ) ) {
-			$_data[ $this->created_by ] = isset( $data[ $this->created_by ] ) ? intval( $data[ $this->created_by ] )
-				: get_current_user_id();
-		}
-
-		// Update created time
-		if ( array_key_exists( $this->created_at, $default_data ) ) {
-			$_data[ $this->created_at ] = $current_time;
 		}
 
 		// Update updated time
@@ -913,14 +971,26 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$_data[ $this->updated_at ] = $current_time;
 		}
 
-		// Set deleted at time as null
-		if ( array_key_exists( $this->deleted_at, $default_data ) ) {
-			$_data[ $this->deleted_at ] = null;
-		}
+		if ( 'create' == $mode ) {
+			// Update Author ID
+			if ( array_key_exists( $this->created_by, $default_data ) && ! isset( $data[ $this->created_by ] ) ) {
+				$_data[ $this->created_by ] = get_current_user_id();
+			}
 
-		// Remove primary key
-		if ( array_key_exists( $this->primaryKey, $_data ) ) {
-			unset( $_data[ $this->primaryKey ] );
+			// Update created time
+			if ( array_key_exists( $this->created_at, $default_data ) ) {
+				$_data[ $this->created_at ] = $current_time;
+			}
+
+			// Set deleted at time as null
+			if ( array_key_exists( $this->deleted_at, $default_data ) ) {
+				$_data[ $this->deleted_at ] = null;
+			}
+
+			// Remove primary key
+			if ( array_key_exists( $this->primaryKey, $_data ) ) {
+				unset( $_data[ $this->primaryKey ] );
+			}
 		}
 
 		$_format = $this->get_data_format_for_db( $_data );
