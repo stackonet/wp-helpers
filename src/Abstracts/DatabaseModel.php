@@ -177,48 +177,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function create( array $data ) {
 		global $wpdb;
-		$table        = $this->get_table_name();
-		$current_time = current_time( 'mysql' );
+		list( $_data, $_format ) = $this->format_item_for_db( $data, $this->get_default_data() );
 
-		$tableColumns = $this->get_column_info();
-
-		$_data = [];
-		foreach ( $tableColumns as $key => $tableColumn ) {
-			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $tableColumn['default'];
-			$_data[ $key ] = $this->serialize( $temp_data );
-		}
-
-		if ( array_key_exists( $this->primaryKey, $_data ) ) {
-			unset( $_data[ $this->primaryKey ] );
-		}
-
-		// Update Author ID
-		if ( array_key_exists( $this->created_by, $tableColumns ) ) {
-			if ( isset( $data[ $this->created_by ] ) && is_numeric( $data[ $this->created_by ] ) ) {
-				$_data[ $this->created_by ] = intval( $data[ $this->created_by ] );
-			} else {
-				$_data[ $this->created_by ] = get_current_user_id();
-			}
-		}
-
-		// Update created time
-		if ( array_key_exists( $this->created_at, $tableColumns ) ) {
-			$_data[ $this->created_at ] = $current_time;
-		}
-
-		// Update updated time
-		if ( array_key_exists( $this->updated_at, $tableColumns ) ) {
-			$_data[ $this->updated_at ] = $current_time;
-		}
-
-		// Set deleted at time as null
-		if ( array_key_exists( $this->deleted_at, $tableColumns ) ) {
-			$_data[ $this->deleted_at ] = null;
-		}
-
-		$format = $this->get_data_format_for_db( $_data );
-
-		$wpdb->insert( $table, $_data, array_values( $format ) );
+		$wpdb->insert( $this->get_table_name(), $_data, $_format );
 
 		// Update cache change
 		$this->set_cache_last_changed();
@@ -239,42 +200,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$current_time  = current_time( 'mysql' );
 		$tableColumns  = $this->get_column_info();
 		$columns_names = array_keys( $tableColumns );
+		$default       = $this->get_default_data();
 
 		$values = [];
-
 		foreach ( $data as $index => $item ) {
-			$_data = [];
-			foreach ( $tableColumns as $key => $tableColumn ) {
-				$temp_data     = isset( $item[ $key ] ) ? $item[ $key ] : $tableColumn['default'];
-				$_data[ $key ] = $this->serialize( $temp_data );
-			}
+			list( $_data, $_format ) = $this->format_item_for_db( $item, $default, $current_time );
 
-			// Update Author ID
-			if ( array_key_exists( $this->created_by, $tableColumns ) ) {
-				$_data[ $this->created_by ] = isset( $data[ $this->created_by ] ) ? intval( $data[ $this->created_by ] )
-					: get_current_user_id();
-			}
-
-			// Update created time
-			if ( array_key_exists( $this->created_at, $tableColumns ) ) {
-				$_data[ $this->created_at ] = $current_time;
-			}
-
-			// Update updated time
-			if ( array_key_exists( $this->updated_at, $tableColumns ) ) {
-				$_data[ $this->updated_at ] = $current_time;
-			}
-
-			// Set deleted at time as null
-			if ( array_key_exists( $this->deleted_at, $tableColumns ) ) {
-				$_data[ $this->deleted_at ] = 'NULL';
-			}
-
-			if ( array_key_exists( $this->primaryKey, $_data ) ) {
-				unset( $_data[ $this->primaryKey ] );
-			}
-
-			$_format  = $this->get_data_format_for_db( $_data );
 			$values[] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $_data );
 		}
 
@@ -285,6 +216,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 
 		$sql   = "INSERT INTO `{$table}` (" . implode( ", ", $columns_names ) . ") VALUES \n" . implode( ",\n", $values ) . ";";
 		$query = $wpdb->query( $sql );
+
+		// Update cache change
+		$this->set_cache_last_changed();
 
 		return (bool) $query;
 	}
@@ -941,5 +875,56 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$table = $this->get_table_name();
 
 		return "$table:$id";
+	}
+
+	/**
+	 * Format item for database
+	 *
+	 * @param array $data User provided data
+	 * @param array $default_data Default data. Previous data for existing record
+	 * @param string $current_time Current datetime
+	 *
+	 * @return array
+	 */
+	protected function format_item_for_db( array $data, array $default_data, $current_time = null ) {
+		if ( empty( $current_time ) ) {
+			$current_time = $current_time = current_time( 'mysql' );
+		}
+
+		$_data = [];
+		foreach ( $default_data as $key => $value ) {
+			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $value;
+			$_data[ $key ] = $this->serialize( $temp_data );
+		}
+
+		// Update Author ID
+		if ( array_key_exists( $this->created_by, $default_data ) ) {
+			$_data[ $this->created_by ] = isset( $data[ $this->created_by ] ) ? intval( $data[ $this->created_by ] )
+				: get_current_user_id();
+		}
+
+		// Update created time
+		if ( array_key_exists( $this->created_at, $default_data ) ) {
+			$_data[ $this->created_at ] = $current_time;
+		}
+
+		// Update updated time
+		if ( array_key_exists( $this->updated_at, $default_data ) ) {
+			$_data[ $this->updated_at ] = $current_time;
+		}
+
+		// Set deleted at time as null
+		if ( array_key_exists( $this->deleted_at, $default_data ) ) {
+			$_data[ $this->deleted_at ] = null;
+		}
+
+		// Remove primary key
+		if ( array_key_exists( $this->primaryKey, $_data ) ) {
+			unset( $_data[ $this->primaryKey ] );
+		}
+
+		$_format = $this->get_data_format_for_db( $_data );
+
+		return array( $_data, $_format );
 	}
 }
