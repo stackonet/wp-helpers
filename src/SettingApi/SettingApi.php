@@ -3,6 +3,7 @@
 namespace Stackonet\WP\Framework\SettingApi;
 
 use Stackonet\WP\Framework\Supports\Sanitize;
+use Stackonet\WP\Framework\Supports\Validate;
 use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
@@ -51,6 +52,13 @@ class SettingApi {
 	protected $sections = [];
 
 	/**
+	 * Option name
+	 *
+	 * @var string
+	 */
+	protected $option_name = null;
+
+	/**
 	 * @return self
 	 */
 	public static function init() {
@@ -77,6 +85,10 @@ class SettingApi {
 
 		$this->menu_fields = $menu_fields;
 
+		if ( ! empty( $menu_fields['option_name'] ) ) {
+			$this->set_option_name( $menu_fields['option_name'] );
+		}
+
 		return $this;
 	}
 
@@ -101,7 +113,7 @@ class SettingApi {
 			}
 
 			if ( 'checkbox' == $type ) {
-				$output_array[ $key ] = in_array( $input, array( 'on', 'yes', '1', 1, 'true', true ) ) ? 'yes' : 'no';
+				$output_array[ $key ] = Validate::checked( $value ) ? 'yes' : 'no';
 				continue;
 			}
 
@@ -176,7 +188,7 @@ class SettingApi {
 	public function get_options() {
 		if ( empty( $this->options ) ) {
 			$defaults      = $this->get_default_options();
-			$options       = get_option( $this->menu_fields['option_name'] );
+			$options       = get_option( $this->get_option_name() );
 			$this->options = wp_parse_args( $options, $defaults );
 		}
 
@@ -193,7 +205,7 @@ class SettingApi {
 		if ( $sanitize ) {
 			$options = $this->sanitize_options( $options );
 		}
-		update_option( $this->menu_fields['option_name'], $options );
+		update_option( $this->get_option_name(), $options );
 	}
 
 	/**
@@ -359,5 +371,29 @@ class SettingApi {
 	 */
 	public function sort_by_priority( $array1, $array2 ) {
 		return $array1['priority'] - $array2['priority'];
+	}
+
+	/**
+	 * Get option name
+	 *
+	 * @return string
+	 */
+	public function get_option_name() {
+		if ( ! empty( $this->menu_fields['option_name'] ) ) {
+			return $this->menu_fields['option_name'];
+		}
+
+		return $this->option_name;
+	}
+
+	/**
+	 * @param string $option_name
+	 *
+	 * @return SettingApi
+	 */
+	public function set_option_name( $option_name ) {
+		$this->option_name = $option_name;
+
+		return $this;
 	}
 }

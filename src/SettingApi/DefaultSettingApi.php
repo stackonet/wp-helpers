@@ -27,9 +27,7 @@ class DefaultSettingApi extends SettingApi {
 	 * Register setting and its sanitize callback.
 	 */
 	public function register_setting() {
-		register_setting( $this->menu_fields['option_name'], $this->menu_fields['option_name'],
-			[ $this, 'sanitize_callback' ]
-		);
+		register_setting( $this->get_option_name(), $this->get_option_name(), [ $this, 'sanitize_callback' ] );
 	}
 
 	/**
@@ -39,8 +37,8 @@ class DefaultSettingApi extends SettingApi {
 	 *
 	 * @return array
 	 */
-	public function sanitize_callback( array $input ) {
-		return $this->sanitize_options( $input );
+	public function sanitize_callback( $input ) {
+		return $this->sanitize_options( is_array( $input ) ? $input : [] );
 	}
 
 	/**
@@ -67,11 +65,14 @@ class DefaultSettingApi extends SettingApi {
 	public function page_content() {
 		$formBuilder = new FormBuilder;
 		$options     = $this->get_options();
-		$option_name = $this->menu_fields['option_name'];
+		$option_name = $this->get_option_name();
 		ob_start(); ?>
-		<div class="wrap about-wrap">
+		<div class="wrap">
 			<h1><?php echo esc_html( $this->menu_fields['page_title'] ); ?></h1>
-			<div class="about-text"><?php echo esc_html( $this->menu_fields['about_text'] ); ?></div>
+			<hr class="wp-header-end">
+			<?php if ( ! empty( $this->menu_fields['about_text'] ) ) { ?>
+				<div class="about-text"><?php echo esc_html( $this->menu_fields['about_text'] ); ?></div>
+			<?php } ?>
 			<?php
 			if ( $this->has_panels() ) {
 				echo $this->option_page_tabs();
@@ -136,7 +137,24 @@ class DefaultSettingApi extends SettingApi {
 		return $this->get_fields_by_panel( $current_tab );
 	}
 
+	/**
+	 * Add new field
+	 *
+	 * @param array $field
+	 */
 	public function add_field( array $field ) {
+		if ( empty( $field['title'] ) && ! empty( $field['name'] ) ) {
+			$field['title'] = $field['name'];
+			unset( $field['name'] );
+		}
+		if ( empty( $field['description'] ) && ! empty( $field['desc'] ) ) {
+			$field['description'] = $field['desc'];
+			unset( $field['desc'] );
+		}
+		if ( empty( $field['default'] ) && ! empty( $field['std'] ) ) {
+			$field['default'] = $field['std'];
+			unset( $field['std'] );
+		}
 		$this->set_field( $field );
 	}
 
@@ -184,17 +202,18 @@ class DefaultSettingApi extends SettingApi {
 	 * Get field for current section
 	 *
 	 * @param string $section
+	 * @param string $panel
 	 *
 	 * @return mixed
 	 */
-	public function get_fields_by_section( $section = '' ) {
-		if ( empty( $section ) || ! $this->has_sections() ) {
+	public function get_fields_by( $section = '', $panel = '' ) {
+		if ( ( empty( $section ) || ! $this->has_sections() ) && empty( $panel ) ) {
 			return $this->get_fields();
 		}
 
 		$fields = [];
 		foreach ( $this->get_fields() as $field ) {
-			if ( $field['section'] == $section ) {
+			if ( $field['section'] == $section || ( ! empty( $panel ) && $panel == $field['panel'] ) ) {
 				$fields[ $field['id'] ] = $field;
 			}
 		}
@@ -213,12 +232,12 @@ class DefaultSettingApi extends SettingApi {
 		$sections = $this->get_sections_by_panel( $panel );
 
 		if ( count( $sections ) < 1 ) {
-			return $this->get_fields();
+			return $this->get_fields_by( null, $panel );
 		}
 
 		$fields = [];
 		foreach ( $sections as $section ) {
-			$_section = $this->get_fields_by_section( $section['id'] );
+			$_section = $this->get_fields_by( $section['id'], $panel );
 			$fields   = array_merge( $fields, $_section );
 		}
 

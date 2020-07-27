@@ -3,6 +3,8 @@
 namespace Stackonet\WP\Framework\SettingApi;
 
 // If this file is called directly, abort.
+use Stackonet\WP\Framework\Supports\Validate;
+
 defined( 'ABSPATH' ) || die;
 
 class FormBuilder {
@@ -195,12 +197,13 @@ class FormBuilder {
 	 * @return string
 	 */
 	public function checkbox( $field, $name, $value ) {
-		$checked = ( 1 == $value ) ? 'checked' : '';
-		$table   = '<input type="hidden" name="' . $name . '" value="0">';
-		$table   .= '<fieldset><legend class="screen-reader-text"><span>' . $field['name'] . '</span></legend>';
-		$table   .= '<label for="' . $field['id'] . '">';
-		$table   .= '<input type="checkbox" value="1" id="' . $field['id'] . '" name="' . $name . '" ' . $checked . '>';
-		$table   .= $field['name'] . '</label></fieldset>';
+		$checked = Validate::checked( $value ) ? 'checked' : '';
+		$table   = '';
+		// $table   = '<input type="hidden" name="' . $name . '" value="no">';
+		$table .= '<fieldset><legend class="screen-reader-text"><span>' . $field['title'] . '</span></legend>';
+		$table .= '<label for="' . $field['id'] . '">';
+		$table .= '<input type="checkbox" value="yes" id="' . $field['id'] . '" name="' . $name . '" ' . $checked . '>';
+		$table .= $field['title'] . '</label></fieldset>';
 
 		return $table;
 	}
