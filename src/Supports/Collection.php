@@ -3,6 +3,7 @@
 namespace Stackonet\WP\Framework\Supports;
 
 use ArrayIterator;
+use JsonSerializable;
 use Stackonet\WP\Framework\Interfaces\CollectionInterface;
 
 defined( 'ABSPATH' ) || exit;
@@ -11,16 +12,39 @@ defined( 'ABSPATH' ) || exit;
  * Class Collection
  * @package Stackonet\WP\Framework\Supports
  */
-class Collection implements CollectionInterface {
+class Collection implements CollectionInterface, JsonSerializable {
 
 	/**
+	 * Data collections
+	 *
 	 * @var array
 	 */
 	protected $collections = array();
 
-	/********************************************************************************
-	 * CollectionInterface interface
-	 *******************************************************************************/
+	/**
+	 * Data collections has been changed from initial state
+	 *
+	 * @var bool
+	 */
+	protected $dirty = false;
+
+	/**
+	 * String representation of the class
+	 *
+	 * @return string
+	 */
+	public function __toString() {
+		return json_encode( $this->to_array() );
+	}
+
+	/**
+	 * Array representation of the class
+	 *
+	 * @return array
+	 */
+	public function to_array() {
+		return $this->all();
+	}
 
 	/**
 	 * Does this collection have a given key?
@@ -45,6 +69,8 @@ class Collection implements CollectionInterface {
 		} else {
 			$this->collections[ $key ] = $value;
 		}
+
+		$this->dirty = true;
 	}
 
 	/**
@@ -87,6 +113,8 @@ class Collection implements CollectionInterface {
 	public function remove( $key ) {
 		if ( $this->has( $key ) ) {
 			unset( $this->collections[ $key ] );
+
+			$this->dirty = true;
 		}
 	}
 
@@ -180,5 +208,19 @@ class Collection implements CollectionInterface {
 	 */
 	public function getIterator() {
 		return new ArrayIterator( $this->all() );
+	}
+
+	/********************************************************************************
+	 * JsonSerializable interface
+	 *******************************************************************************/
+
+	/**
+	 * Specify data which should be serialized to JSON
+	 *
+	 * @return mixed data which can be serialized by json_encode
+	 * which is a value of any type other than a resource.
+	 */
+	public function jsonSerialize() {
+		return $this->to_array();
 	}
 }

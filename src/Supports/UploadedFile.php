@@ -21,7 +21,7 @@ class UploadedFile extends \Stackonet\WP\Framework\Media\UploadedFile {
 	 * @param bool $sapi Indicates if the upload is in a SAPI environment.
 	 */
 	public function __construct( $file, $name = null, $type = null, $size = null, $error = UPLOAD_ERR_OK, $sapi = false ) {
-		_deprecated_function( __CLASS__, '1.1.4', '\Stackonet\WP\Framework\Media\UploadedFile' );
+		_deprecated_function( __CLASS__, '1.1.4', \Stackonet\WP\Framework\Media\UploadedFile::class );
 
 		parent::__construct( $file, $name, $type, $size, $error, $sapi );
 	}

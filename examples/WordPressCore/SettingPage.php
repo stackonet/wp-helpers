@@ -51,7 +51,7 @@ class SettingPage {
 		$sections = [
 			[
 				'id'          => 'google_map',
-				'title'       => __( 'General Options', 'dialog-contact-form' ),
+				'title'       => __( 'Google Map', 'dialog-contact-form' ),
 				'description' => __( 'Plugin general options.', 'dialog-contact-form' ),
 				'panel'       => 'integrations',
 				'priority'    => 10,

@@ -113,7 +113,7 @@ class SettingApi {
 			}
 
 			if ( 'checkbox' == $type ) {
-				$output_array[ $key ] = Validate::checked( $value ) ? 'yes' : 'no';
+				$output_array[ $key ] = Validate::checked( $value ) ? 1 : 0;
 				continue;
 			}
 

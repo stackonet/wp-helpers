@@ -1,3 +1,19 @@
+#### 1.1.6
+* Add new method to create multiple database records.
+* Refactor code to format item for a table when create new single/multiple record.
+* Add new method to DatabaseModel class to update multiple rows on a single query.
+* Add default setting api handler for default WordPress setting page design.
+* Add setting api example.
+
+#### 1.1.5
+* Add method to set global GET parameters for all request.
+* Add example for creating meta field for term.
+* Add WooCommerce My Account menu page example.
+* Add example class for adding custom product data to WooCommerce order item.
+* Add GitHub Updater class for updating plugin from github.
+* Add support for a batch (trash, restore, delete) operation.
+* Add support for multiple columns for order_by parameters.
+
 #### 1.1.4
 * Rename `EmailTemplate` class to `EmailTemplateBase`
 * Add two new email template class `ActionEmailTemplate` and `BillingEmailTemplate`

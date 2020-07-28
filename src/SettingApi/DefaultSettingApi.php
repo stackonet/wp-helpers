@@ -63,9 +63,18 @@ class DefaultSettingApi extends SettingApi {
 	 * Load page content
 	 */
 	public function page_content() {
-		$formBuilder = new FormBuilder;
 		$options     = $this->get_options();
 		$option_name = $this->get_option_name();
+
+		$has_sections = false;
+		$panel        = '';
+		$sections     = [];
+		if ( $this->has_panels() ) {
+			$panels_ids   = wp_list_pluck( $this->get_panels(), 'id' );
+			$panel        = isset ( $_GET['tab'] ) && in_array( $_GET['tab'], $panels_ids ) ? $_GET['tab'] : $panels_ids[0];
+			$sections     = $this->get_sections_by_panel( $panel );
+			$has_sections = count( $sections ) > 0;
+		}
 		ob_start(); ?>
 		<div class="wrap">
 			<h1><?php echo esc_html( $this->menu_fields['page_title'] ); ?></h1>
@@ -81,13 +90,45 @@ class DefaultSettingApi extends SettingApi {
 			<form autocomplete="off" method="POST" action="<?php echo esc_attr( $this->action ); ?>">
 				<?php
 				settings_fields( $option_name );
-				echo $formBuilder->get_fields_html( $this->filter_fields_by_tab(), $option_name, $options );
+				if ( $has_sections ) {
+					echo $this->get_fields_html_by_section( $sections, $panel );
+				} else {
+					echo ( new FormBuilder )->get_fields_html( $this->filter_fields_by_tab(), $option_name, $options );
+				}
 				submit_button();
 				?>
 			</form>
 		</div>
 		<?php
 		echo ob_get_clean();
+	}
+
+	/**
+	 * Get fields HTML by section
+	 *
+	 * @param array $sections Array of section
+	 * @param string $panel Panel id
+	 *
+	 * @return string
+	 */
+	public function get_fields_html_by_section( array $sections = [], $panel = null ) {
+		$options     = $this->get_options();
+		$option_name = $this->get_option_name();
+
+		$table = '';
+		foreach ( $sections as $section ) {
+			if ( ! empty( $section['title'] ) ) {
+				$table .= '<h2 class="title">' . esc_html( $section['title'] ) . '</h2>';
+			}
+			if ( ! empty( $section['description'] ) ) {
+				$table .= '<p class="description">' . esc_js( $section['description'] ) . '</p>';
+			}
+
+			$fieldsArray = $this->get_fields_by( $section['id'], $panel );
+			$table       .= ( new FormBuilder )->get_fields_html( $fieldsArray, $option_name, $options );
+		}
+
+		return $table;
 	}
 
 	/**

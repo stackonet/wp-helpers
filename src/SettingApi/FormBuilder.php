@@ -197,13 +197,15 @@ class FormBuilder {
 	 * @return string
 	 */
 	public function checkbox( $field, $name, $value ) {
+		$true_value  = isset( $field['true-value'] ) ? esc_attr( $field['true-value'] ) : '1';
+		$false_value = isset( $field['false-value'] ) ? esc_attr( $field['false-value'] ) : '0';
+
 		$checked = Validate::checked( $value ) ? 'checked' : '';
-		$table   = '';
-		// $table   = '<input type="hidden" name="' . $name . '" value="no">';
-		$table .= '<fieldset><legend class="screen-reader-text"><span>' . $field['title'] . '</span></legend>';
-		$table .= '<label for="' . $field['id'] . '">';
-		$table .= '<input type="checkbox" value="yes" id="' . $field['id'] . '" name="' . $name . '" ' . $checked . '>';
-		$table .= $field['title'] . '</label></fieldset>';
+		$table   = '<input type="hidden" name="' . $name . '" value="' . $false_value . '">';
+		$table   .= '<fieldset><legend class="screen-reader-text"><span>' . $field['title'] . '</span></legend>';
+		$table   .= '<label for="' . $field['id'] . '">';
+		$table   .= '<input type="checkbox" value="' . $true_value . '" id="' . $field['id'] . '" name="' . $name . '" ' . $checked . '>';
+		$table   .= $field['title'] . '</label></fieldset>';
 
 		return $table;
 	}
