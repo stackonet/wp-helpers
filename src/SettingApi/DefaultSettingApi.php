@@ -254,7 +254,10 @@ class DefaultSettingApi extends SettingApi {
 
 		$fields = [];
 		foreach ( $this->get_fields() as $field ) {
-			if ( $field['section'] == $section || ( ! empty( $panel ) && $panel == $field['panel'] ) ) {
+			if (
+				( isset( $field['section'] ) && $field['section'] == $section ) ||
+				( ! empty( $panel ) && isset( $field['panel'] ) && $panel == $field['panel'] )
+			) {
 				$fields[ $field['id'] ] = $field;
 			}
 		}
