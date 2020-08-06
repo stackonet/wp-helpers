@@ -216,7 +216,15 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		foreach ( $data as $index => $item ) {
 			list( $_data, $_format ) = $this->format_item_for_db( $item, $default, $current_time );
 
-			$values[] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $_data );
+			$sanitize_data = [];
+			foreach ( $_data as $column_name => $column_value ) {
+				if ( is_null( $column_value ) ) {
+					continue;
+				}
+				$sanitize_data[ $column_name ] = $column_value;
+			}
+
+			$values[] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $sanitize_data );
 		}
 
 		if ( in_array( $this->primaryKey, $columns_names ) ) {
@@ -260,13 +268,22 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 				continue;
 			}
 			// Continue if record is not found on database
-			if ( ! isset( $default_items[ $item[ $this->primaryKey ] ] ) ) {
+			$default = isset( $default_items[ $item[ $this->primaryKey ] ] ) ? $default_items[ $item[ $this->primaryKey ] ] : [];
+			if ( empty( $default ) ) {
 				continue;
 			}
 
-			list( $_data, $_format ) = $this->format_item_for_db( $item, $default_items[ $item[ $this->primaryKey ] ], $current_time );
+			$default = $default instanceof Data ? $default->data : $default;
+			list( $_data, $_format ) = $this->format_item_for_db( $item, $default, $current_time );
 
-			$values[] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $_data );
+			$sanitize_data = [];
+			foreach ( $_data as $column_name => $column_value ) {
+				if ( is_null( $column_value ) ) {
+					continue;
+				}
+				$sanitize_data[ $column_name ] = $column_value;
+			}
+			$values[ $index ] = $wpdb->prepare( "(" . implode( ", ", $_format ) . ")", $sanitize_data );
 		}
 
 		$update_columns = [];
