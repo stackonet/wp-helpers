@@ -1,3 +1,7 @@
+#### 1.1.7
+* Fix error undefined variable panel for Setting Api.
+* Fix prepare statement error for creating and updating multiple items.
+
 #### 1.1.6
 * Add new method to create multiple database records.
 * Refactor code to format item for a table when create new single/multiple record.
