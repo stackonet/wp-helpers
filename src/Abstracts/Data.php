@@ -30,6 +30,28 @@ class Data implements ArrayAccess, JsonSerializable {
 	}
 
 	/**
+	 * Get collection item for key
+	 *
+	 * @param string $name
+	 *
+	 * @return mixed
+	 */
+	public function __get( $name ) {
+		return $this->get( $name );
+	}
+
+	/**
+	 * Does this collection have a given key?
+	 *
+	 * @param string $name
+	 *
+	 * @return bool
+	 */
+	public function __isset( $name ) {
+		return $this->has( $name );
+	}
+
+	/**
 	 * Array representation of the class
 	 *
 	 * @return array
@@ -56,6 +78,13 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * @param mixed $value The data value
 	 */
 	public function set( $key, $value ) {
+		$setter = "set_{$key}";
+		if ( is_callable( array( $this, $setter ) ) ) {
+			$this->{$setter}( $value );
+
+			return;
+		}
+
 		$this->data[ $key ] = $value;
 	}
 
@@ -68,7 +97,21 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * @return mixed The key's value, or the default value
 	 */
 	public function get( $key, $default = '' ) {
-		return $this->has( $key ) ? $this->data[ $key ] : $default;
+		$getter = "get_{$key}";
+		if ( is_callable( array( $this, $getter ) ) ) {
+			return $this->{$getter}( $key );
+		}
+
+		if ( $this->has( $key ) ) {
+			$value = $this->data[ $key ];
+			if ( is_numeric( $value ) ) {
+				return is_float( $value ) ? (float) $value : (int) $value;
+			}
+
+			return $value;
+		}
+
+		return $default;
 	}
 
 	/**
