@@ -3,6 +3,7 @@
 namespace Stackonet\WP\Framework\Abstracts;
 
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
+use Stackonet\WP\Framework\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -13,6 +14,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Stackonet\WP\Framework\Abstracts
  */
 abstract class DatabaseModel extends Data implements DataStoreInterface {
+
+	use Cacheable;
 
 	/**
 	 * The table associated with the model.
@@ -497,7 +500,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @param mixed $data
 	 *
-	 * @return array|self
+	 * @return array
 	 */
 	public function read( $data ) {
 		if ( $data instanceof Data ) {
@@ -524,10 +527,37 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 				$item[ $columnName ] = $this->unserialize( $temp_data );
 			}
 
-			return $item;
+			return $this->format_data_by_type( $item );
 		}
 
 		return $default;
+	}
+
+	/**
+	 * Format data by type
+	 *
+	 * @param array $data
+	 *
+	 * @return array
+	 */
+	public function format_data_by_type( array $data ) {
+		$column_info    = static::get_column_info();
+		$formatted_data = [];
+		foreach ( $data as $key => $value ) {
+			if ( ! array_key_exists( $key, $column_info ) ) {
+				continue;
+			}
+			$data_format = $column_info[ $key ]['data_format'];
+			if ( '%d' == $data_format ) {
+				$formatted_data[ $key ] = intval( $value );
+			} elseif ( '%f' == $data_format ) {
+				$formatted_data[ $key ] = floatval( $value );
+			} else {
+				$formatted_data[ $key ] = $value;
+			}
+		}
+
+		return $formatted_data;
 	}
 
 	/**
@@ -890,82 +920,10 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
-	 * Retrieves the cache contents from the cache by key and group.
-	 *
-	 * @param int|string $key The key under which the cache contents are stored.
-	 *
-	 * @return bool|mixed False on failure to retrieve contents or the cache contents on success
-	 * @see WP_Object_Cache::get()
-	 */
-	public function get_cache( $key ) {
-		return wp_cache_get( $key, $this->cache_group );
-	}
-
-	/**
-	 * Saves the data to the cache.
-	 *
-	 * @param int|string $key The cache key to use for retrieval later.
-	 * @param mixed $data The contents to store in the cache.
-	 * @param int $expire Optional. When to expire the cache contents, in seconds. Default 0 (no expiration).
-	 */
-	public function set_cache( $key, $data, $expire = 0 ) {
-		if ( empty( $expire ) ) {
-			$expire = MONTH_IN_SECONDS;
-		}
-		wp_cache_set( $key, $data, $this->cache_group, $expire );
-	}
-
-	/**
-	 * Removes the cache contents matching key and group.
-	 *
-	 * @param int|string $key What the contents in the cache are called.
-	 */
-	public function delete_cache( $key ) {
-		wp_cache_delete( $key, $this->cache_group );
-		$this->set_cache_last_changed();
-	}
-
-	/**
-	 * Set cache last changed
-	 * Use this method when you create, update or delete item
-	 */
-	public function set_cache_last_changed() {
-		wp_cache_set( 'last_changed', microtime(), $this->cache_group );
-	}
-
-	/**
-	 * Get cache key for collection
-	 *
-	 * @param array $args
-	 *
-	 * @return string
-	 */
-	public function get_cache_key_for_collection( array $args = [] ) {
-		$last_changed = wp_cache_get_last_changed( $this->cache_group );
-		$hash         = md5( serialize( $args ) );
-		$table        = $this->get_table_name();
-
-		return "$table:$hash:$last_changed";
-	}
-
-	/**
-	 * Get cache key for single item
-	 *
-	 * @param int $id
-	 *
-	 * @return string
-	 */
-	public function get_cache_key_for_single_item( $id ) {
-		$table = $this->get_table_name();
-
-		return "$table:$id";
-	}
-
-	/**
 	 * Format item for database
 	 *
-	 * @param array $data User provided data
-	 * @param array $default_data Default data. Previous data for existing record
+	 * @param array  $data         User provided data
+	 * @param array  $default_data Default data. Previous data for existing record
 	 * @param string $current_time Current datetime
 	 *
 	 * @return array

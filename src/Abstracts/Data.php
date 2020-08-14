@@ -78,13 +78,6 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * @param mixed $value The data value
 	 */
 	public function set( $key, $value ) {
-		$setter = "set_{$key}";
-		if ( is_callable( array( $this, $setter ) ) ) {
-			$this->{$setter}( $value );
-
-			return;
-		}
-
 		$this->data[ $key ] = $value;
 	}
 
@@ -97,11 +90,6 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * @return mixed The key's value, or the default value
 	 */
 	public function get( $key, $default = '' ) {
-		$getter = "get_{$key}";
-		if ( is_callable( array( $this, $getter ) ) ) {
-			return $this->{$getter}( $key );
-		}
-
 		if ( $this->has( $key ) ) {
 			$value = $this->data[ $key ];
 			if ( is_numeric( $value ) ) {
