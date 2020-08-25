@@ -4,6 +4,7 @@ namespace Stackonet\WP\Framework\Abstracts;
 
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
 use Stackonet\WP\Framework\Traits\Cacheable;
+use Stackonet\WP\Framework\Traits\TableInfo;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -15,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 abstract class DatabaseModel extends Data implements DataStoreInterface {
 
-	use Cacheable;
+	use Cacheable, TableInfo;
 
 	/**
 	 * The table associated with the model.
@@ -355,7 +356,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$_data[ $this->deleted_at ] = null;
 		}
 
-		$dataFormat = $this->get_data_format_for_db( array_keys( $_data ) );
+		$dataFormat = static::__get_data_format_for_db( $table, array_keys( $_data ) );
 
 		if ( $wpdb->update( $table, $_data, [ $this->primaryKey => $id ], array_values( $dataFormat ), $this->primaryKeyType ) ) {
 			return true;
@@ -541,23 +542,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	public function format_data_by_type( array $data ) {
-		$column_info    = static::get_column_info();
-		$formatted_data = [];
-		foreach ( $data as $key => $value ) {
-			if ( ! array_key_exists( $key, $column_info ) ) {
-				continue;
-			}
-			$data_format = $column_info[ $key ]['data_format'];
-			if ( '%d' == $data_format ) {
-				$formatted_data[ $key ] = intval( $value );
-			} elseif ( '%f' == $data_format ) {
-				$formatted_data[ $key ] = floatval( $value );
-			} else {
-				$formatted_data[ $key ] = $value;
-			}
-		}
-
-		return $formatted_data;
+		return static::__format_data_by_type( $this->get_table_name(), $data );
 	}
 
 	/**
@@ -717,30 +702,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
-	 * Get integer data type
-	 *
-	 * @return array
-	 */
-	public static function get_integer_data_type() {
-		return [ 'bit', 'int', 'integer', 'tinyint', 'smallint', 'mediumint', 'bigint', 'bool', 'boolean' ];
-	}
-
-	/**
-	 * get float data type
-	 *
-	 * @return array
-	 */
-	public static function get_float_data_type() {
-		return [ 'float', 'double', 'decimal', 'dec' ];
-	}
-
-	/**
 	 * Get column name
 	 *
 	 * @return array
 	 */
 	public function get_columns_names() {
-		return array_keys( $this->get_column_info() );
+		return static::__get_columns_names( $this->get_table_name() );
 	}
 
 	/**
@@ -749,54 +716,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	public function get_default_data() {
-		$columns = $this->get_column_info();
-		$data    = [];
-		foreach ( $columns as $columnName => $info ) {
-			if ( $info['nullable'] ) {
-				$default = null;
-			} else {
-				$default = isset( $info['default'] ) ? $info['default'] : '';
-			}
-
-			if ( in_array( $columnName, static::get_integer_data_type() ) ) {
-				$default = 0;
-			}
-
-			if ( in_array( $columnName, static::get_float_data_type() ) ) {
-				$default = 0;
-			}
-
-			$data[ $columnName ] = $default;
-		}
-
-		return $data;
-	}
-
-	/**
-	 * Get data format for db
-	 *
-	 * @param array $fields
-	 *
-	 * @return array
-	 */
-	public function get_data_format_for_db( array $fields = [] ) {
-		$columns = $this->get_column_info();
-		if ( empty( $fields ) ) {
-			return wp_list_pluck( $columns, 'data_format' );
-		}
-
-		$formats = [];
-		foreach ( $fields as $index => $field ) {
-			if ( is_string( $index ) && isset( $columns[ $index ] ) ) {
-				$formats[ $index ] = is_null( $field ) ? 'NULL' : $columns[ $index ]['data_format'];
-				continue;
-			}
-			if ( isset( $columns[ $field ] ) ) {
-				$formats[ $field ] = $columns[ $field ]['data_format'];
-			}
-		}
-
-		return $formats;
+		return static::__get_default_data( $this->get_table_name() );
 	}
 
 	/**
@@ -805,36 +725,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return array
 	 */
 	public function get_column_info() {
-		$table = $this->get_table_name( $this->table );
-
-		if ( ! empty( static::$columns[ $table ] ) ) {
-			return static::$columns[ $table ];
-		}
-
-		$cache_key   = $table . ':column_info';
-		$column_info = $this->get_cache( $cache_key );
-		if ( $column_info === false ) {
-			global $wpdb;
-			$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A );
-
-			foreach ( $results as $column ) {
-				$length = static::get_type_and_length( $column );
-
-				static::$columns[ $table ][ $column['Field'] ] = [
-					'field'       => $column['Field'],
-					'default'     => $column['Default'],
-					'type'        => $length['type'],
-					'length'      => $length['length'],
-					'nullable'    => strtolower( $column['Null'] ) == 'yes',
-					'data_format' => $this->get_data_format_for_type( $length['type'] ),
-				];
-			}
-
-			$this->set_cache( $cache_key, static::$columns[ $table ] );
-			$column_info = static::$columns[ $table ];
-		}
-
-		return $column_info;
+		return static::__get_formatted_info( $this->get_table_name( $this->table ) );
 	}
 
 	/**
@@ -854,69 +745,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		return $wpdb->prefix . $table;
-	}
-
-	/**
-	 * Get type and max length
-	 *
-	 * @param array $column
-	 *
-	 * @return array|bool
-	 */
-	public static function get_type_and_length( array $column ) {
-		$typeinfo = explode( '(', $column['Type'] );
-		$type     = strtolower( $typeinfo[0] );
-		$length   = false;
-		if ( ! empty( $typeinfo[1] ) ) {
-			$length = trim( $typeinfo[1], ')' );
-		}
-
-		switch ( $type ) {
-			case 'char':
-			case 'varchar':
-				return array( 'type' => 'char', 'length' => (int) $length, );
-
-			case 'binary':
-			case 'varbinary':
-				return array( 'type' => 'byte', 'length' => (int) $length, );
-
-			case 'tinyblob':
-			case 'tinytext':
-				return array( 'type' => 'byte', 'length' => 255, ); // 2^8 - 1
-
-			case 'blob':
-			case 'text':
-				return array( 'type' => 'byte', 'length' => 65535, ); // 2^16 - 1
-
-			case 'mediumblob':
-			case 'mediumtext':
-				return array( 'type' => 'byte', 'length' => 16777215, ); // 2^24 - 1
-
-			case 'longblob':
-			case 'longtext':
-				return array( 'type' => 'byte', 'length' => 4294967295, ); // 2^32 - 1
-
-			default:
-				return array( 'type' => $type, 'length' => $length, );
-		}
-	}
-
-	/**
-	 * Get data format for db
-	 *
-	 * @param string $type
-	 *
-	 * @return string
-	 */
-	public function get_data_format_for_type( $type ) {
-		if ( in_array( $type, static::get_integer_data_type() ) ) {
-			return '%d';
-		}
-		if ( in_array( $type, static::get_float_data_type() ) ) {
-			return '%f';
-		}
-
-		return '%s';
 	}
 
 	/**
@@ -968,7 +796,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			}
 		}
 
-		$_format = $this->get_data_format_for_db( $_data );
+		$_format = static::__get_data_format_for_db( $this->get_table_name(), $_data );
 
 		return array( $_data, $_format );
 	}

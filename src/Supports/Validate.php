@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Validate
+ *
  * @package Stackonet\WP\Framework\Supports
  */
 class Validate {
@@ -59,7 +60,6 @@ class Validate {
 
 	/**
 	 * Check if the value is a number, including numbers within strings.
-	 *
 	 * Numeric strings consist of optional sign, any number of digits,
 	 * optional decimal part and optional exponential part.
 	 * Thus +0123.45e6 is a valid numeric value.
@@ -125,7 +125,7 @@ class Validate {
 	 * Check if string length is greater than or equal to given int.
 	 * To check the size of a number, pass the optional number option.
 	 *
-	 * @param mixed $value
+	 * @param mixed   $value
 	 * @param integer $min_value
 	 * @param boolean $is_number
 	 *
@@ -143,7 +143,7 @@ class Validate {
 	 * Check if string length is less than or equal to given int.
 	 * To check the size of a number, pass the optional number option.
 	 *
-	 * @param mixed $value
+	 * @param mixed   $value
 	 * @param integer $max_value
 	 * @param boolean $is_number
 	 *
@@ -161,7 +161,7 @@ class Validate {
 	 * Checks if the value is within the intervals defined.
 	 * This check is inclusive, so 5 is between 5 and 10.
 	 *
-	 * @param mixed $value
+	 * @param mixed   $value
 	 * @param integer $min_value
 	 * @param integer $max_value
 	 *
@@ -200,13 +200,19 @@ class Validate {
 	 * @return bool
 	 */
 	public static function time( $value ) {
+		// Validate 24 hours time
+		if ( preg_match( "/^(?:2[0-3]|[01][0-9]):[0-5][0-9]$/", $value ) ) {
+			return true;
+		}
+
+		// Validate 12 hours time
 		return (bool) preg_match( '/^(1[0-2]|0?[1-9]):[0-5][0-9] (AM|PM)$/i', $value );
 	}
 
 	/**
 	 * Check if the given input has a match for the regular expression given
 	 *
-	 * @param mixed $value
+	 * @param mixed  $value
 	 * @param string $regex
 	 *
 	 * @return boolean
