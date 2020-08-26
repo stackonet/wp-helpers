@@ -112,6 +112,15 @@ abstract class PostTypeModel implements JsonSerializable {
 	}
 
 	/**
+	 * Get summery
+	 *
+	 * @return string
+	 */
+	public function get_excerpt() {
+		return apply_filters( 'the_excerpt', apply_filters( 'get_the_excerpt', $this->post->post_excerpt, $this->post ) );
+	}
+
+	/**
 	 * Get thumbnail src
 	 *
 	 * @param string $size
@@ -168,6 +177,8 @@ abstract class PostTypeModel implements JsonSerializable {
 	}
 
 	/**
+	 * Get image data
+	 *
 	 * @param int    $image_id
 	 * @param string $size
 	 *
@@ -180,7 +191,15 @@ abstract class PostTypeModel implements JsonSerializable {
 			return $image;
 		}
 
-		return [ 'id' => $image_id, 'url' => $src[0], 'width' => $src[1], 'height' => $src[2], ];
+		$alt_text = get_post_meta( $image_id, '_wp_attachment_image_alt', true );
+
+		return [
+			'id'       => $image_id,
+			'url'      => $src[0],
+			'width'    => $src[1],
+			'height'   => $src[2],
+			'alt_text' => $alt_text
+		];
 	}
 
 	/**
@@ -266,43 +285,52 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * Get post type args
 	 *
 	 * @param string $menu_name
+	 * @param string $name
+	 * @param string $singular_name
 	 * @param array  $args
 	 *
 	 * @return array
 	 */
-	public static function get_post_type_args( $menu_name = 'Posts', array $args = [] ) {
+	public static function get_post_type_args(
+		string $menu_name = 'Posts',
+		string $name = 'Posts',
+		string $singular_name = 'Post',
+		array $args = []
+	) {
+		$l_name          = strtolower( $name );
+		$l_singular_name = strtolower( $singular_name );
+
 		$labels       = array(
-			'name'                  => 'Posts',
-			'singular_name'         => 'Post',
+			'name'                  => $name,
+			'singular_name'         => $singular_name,
 			'menu_name'             => $menu_name,
 			'name_admin_bar'        => $menu_name,
-			'archives'              => 'Post Archives',
-			'attributes'            => 'Post Attributes',
-			'parent_item_colon'     => 'Parent Post:',
-			'all_items'             => 'All Posts',
-			'add_new_item'          => 'Add New Post',
+			'archives'              => $singular_name . ' Archives',
+			'attributes'            => $singular_name . ' Attributes',
+			'parent_item_colon'     => 'Parent ' . $singular_name . ':',
+			'all_items'             => 'All ' . $name,
+			'add_new_item'          => 'Add New ' . $singular_name,
 			'add_new'               => 'Add New',
-			'new_item'              => 'New Post',
-			'edit_item'             => 'Edit Post',
-			'update_item'           => 'Update Post',
-			'view_item'             => 'View Post',
-			'view_items'            => 'View Posts',
-			'search_items'          => 'Search Post',
+			'new_item'              => 'New ' . $singular_name,
+			'edit_item'             => 'Edit ' . $singular_name,
+			'update_item'           => 'Update ' . $singular_name,
+			'view_item'             => 'View ' . $singular_name,
+			'view_items'            => 'View ' . $name,
+			'search_items'          => 'Search ' . $singular_name,
 			'not_found'             => 'Not found',
 			'not_found_in_trash'    => 'Not found in Trash',
 			'featured_image'        => 'Featured Image',
 			'set_featured_image'    => 'Set featured image',
 			'remove_featured_image' => 'Remove featured image',
 			'use_featured_image'    => 'Use as featured image',
-			'insert_into_item'      => 'Insert into post',
-			'uploaded_to_this_item' => 'Uploaded to this post',
-			'items_list'            => 'Posts list',
-			'items_list_navigation' => 'Posts list navigation',
-			'filter_items_list'     => 'Filter posts list',
+			'insert_into_item'      => 'Insert into ' . $l_singular_name,
+			'uploaded_to_this_item' => 'Uploaded to this ' . $l_singular_name,
+			'items_list'            => $name . ' list',
+			'items_list_navigation' => $name . ' list navigation',
+			'filter_items_list'     => 'Filter ' . $l_name . ' list',
 		);
 		$default_args = array(
-			'label'               => 'Post',
-			'description'         => 'A list of posts',
+			'label'               => $name,
 			'labels'              => $labels,
 			'supports'            => array( 'title', 'editor' ),
 			'hierarchical'        => false,
