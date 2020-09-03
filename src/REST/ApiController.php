@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class ApiController
+ *
  * @package Stackonet\WP\Framework\REST
  */
 class ApiController extends WP_REST_Controller {
@@ -25,7 +26,6 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * The namespace of this controller's route.
 	 *
-	 * @since 4.7.0
 	 * @var string
 	 */
 	protected $namespace = 'stackonet/v1';
@@ -55,8 +55,8 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * Respond.
 	 *
-	 * @param mixed $data Response data. Default null.
-	 * @param int $status Optional. HTTP status code. Default 200.
+	 * @param mixed $data    Response data. Default null.
+	 * @param int   $status  Optional. HTTP status code. Default 200.
 	 * @param array $headers Optional. HTTP header map. Default empty array.
 	 *
 	 * @return WP_REST_Response
@@ -70,7 +70,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -100,9 +100,9 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * Response success message
 	 *
-	 * @param mixed $data
+	 * @param mixed  $data
 	 * @param string $message
-	 * @param array $headers
+	 * @param array  $headers
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -128,13 +128,12 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * 200 (OK)
 	 * The request has succeeded.
-	 *
 	 * Use cases:
 	 * --> update/retrieve data
 	 * --> bulk creation
 	 * --> bulk update
 	 *
-	 * @param mixed $data
+	 * @param mixed  $data
 	 * @param string $message
 	 *
 	 * @return WP_REST_Response
@@ -148,7 +147,7 @@ class ApiController extends WP_REST_Controller {
 	 * The request has succeeded and a new resource has been created as a result of it.
 	 * This is typically the response sent after a POST request, or after some PUT requests.
 	 *
-	 * @param mixed $data
+	 * @param mixed  $data
 	 * @param string $message
 	 *
 	 * @return WP_REST_Response
@@ -162,13 +161,12 @@ class ApiController extends WP_REST_Controller {
 	 * The request has been received but not yet acted upon.
 	 * The response should include the Location header with a link towards the location where
 	 * the final response can be polled & later obtained.
-	 *
 	 * Use cases:
 	 * --> asynchronous tasks (e.g., report generation)
 	 * --> batch processing
 	 * --> delete data that is NOT immediate
 	 *
-	 * @param mixed $data
+	 * @param mixed  $data
 	 * @param string $message
 	 *
 	 * @return WP_REST_Response
@@ -180,11 +178,10 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * 204 (No Content)
 	 * There is no content to send for this request, but the headers may be useful.
-	 *
 	 * Use cases:
 	 * --> deletion succeeded
 	 *
-	 * @param mixed $data
+	 * @param mixed  $data
 	 * @param string $message
 	 *
 	 * @return WP_REST_Response
@@ -196,14 +193,13 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * 400 (Bad request)
 	 * Server could not understand the request due to invalid syntax.
-	 *
 	 * Use cases:
 	 * --> invalid/incomplete request
 	 * --> return multiple client errors at once
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -217,7 +213,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -239,7 +235,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -263,7 +259,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -285,7 +281,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -311,7 +307,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @param string $code
 	 * @param string $message
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -331,7 +327,7 @@ class ApiController extends WP_REST_Controller {
 	 * Format date for REST Response
 	 *
 	 * @param string|int|DateTime $date
-	 * @param string $type
+	 * @param string              $type
 	 *
 	 * @return DateTime|int|string
 	 * @throws Exception
@@ -377,6 +373,10 @@ class ApiController extends WP_REST_Controller {
 	 * @return array
 	 */
 	public static function get_pagination_data( $total_items, $per_page = 20, $current_page = 1 ) {
+		$current_page = max( intval( $current_page ), 1 );
+		$per_page     = max( intval( $per_page ), 1 );
+		$total_items  = intval( $total_items );
+
 		return array(
 			"total_items"  => $total_items,
 			"per_page"     => $per_page,
@@ -393,9 +393,9 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @return array
 	 */
-	public function getSortingMetadata( $field, $order ) {
-		return array(
-			array( "field" => $field, "order" => $order ),
-		);
+	public function get_sorting_metadata( $field, $order ) {
+		return [
+			[ "field" => $field, "order" => $order ],
+		];
 	}
 }
