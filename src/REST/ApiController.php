@@ -4,6 +4,7 @@ namespace Stackonet\WP\Framework\REST;
 
 use DateTime;
 use Exception;
+use Stackonet\WP\Framework\Supports\Logger;
 use WP_REST_Controller;
 use WP_REST_Response;
 
@@ -333,6 +334,8 @@ class ApiController extends WP_REST_Controller {
 	 * @throws Exception
 	 */
 	public static function formatDate( $date, $type = 'iso' ) {
+		_deprecated_function( __FUNCTION__, '1.1.8', static::class . '::format_date()' );
+
 		if ( ! $date instanceof DateTime ) {
 			$date = new DateTime( $date );
 		}
@@ -364,6 +367,23 @@ class ApiController extends WP_REST_Controller {
 	}
 
 	/**
+	 * Format date for ISO8601 (Y-m-d\TH:i:s)
+	 *
+	 * @param string $date_string
+	 *
+	 * @return string
+	 */
+	public static function format_date( string $date_string = 'now' ) {
+		try {
+			return ( new DateTime( $date_string ) )->format( 'Y-m-d\TH:i:s' );
+		} catch ( Exception $e ) {
+			Logger::log( $e );
+		}
+
+		return $date_string;
+	}
+
+	/**
 	 * Generate pagination metadata
 	 *
 	 * @param int $total_items
@@ -386,16 +406,66 @@ class ApiController extends WP_REST_Controller {
 	}
 
 	/**
-	 * Get sorting metadata
+	 * Read sorting data
+	 * Example ==============================================
+	 * sort=<field1>+<ASC|DESC>[,<field2>+<ASC|DESC>][, ...]
+	 * GET ...?sort=title+DESC
+	 * GET ...?sort=title+DESC,author+ASC
 	 *
-	 * @param string $field
-	 * @param string $order
+	 * @param string|null $sort
 	 *
 	 * @return array
 	 */
-	public function get_sorting_metadata( $field, $order ) {
-		return [
-			[ "field" => $field, "order" => $order ],
-		];
+	public static function sanitize_sorting_data( ?string $sort = null ) {
+		$sort_array = [];
+		$sort_items = explode( ',', $sort );
+		foreach ( $sort_items as $item ) {
+			if ( strpos( $item, '+' ) == false ) {
+				continue;
+			}
+			list( $field, $order ) = explode( '+', $item );
+			$sort_array[] = [
+				"field" => $field,
+				"order" => strtoupper( $order ) == 'DESC' ? 'DESC' : 'ASC',
+			];
+		}
+
+		return $sort_array;
+	}
+
+	/**
+	 * Retrieves the query params for the collections.
+	 *
+	 * @return array Query parameters for the collection.
+	 */
+	public function get_collection_params() {
+		return array(
+			'context'  => $this->get_context_param(),
+			'page'     => array(
+				'description'       => __( 'Current page of the collection.' ),
+				'type'              => 'integer',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+				'validate_callback' => 'rest_validate_request_arg',
+				'minimum'           => 1,
+			),
+			'per_page' => array(
+				'description'       => __( 'Maximum number of items to be returned in result set.' ),
+				'type'              => 'integer',
+				'default'           => 10,
+				'minimum'           => 1,
+				'maximum'           => 100,
+				'sanitize_callback' => 'absint',
+				'validate_callback' => 'rest_validate_request_arg',
+			),
+			'search'   => array(
+				'description'       => __( 'Limit results to those matching a string.' ),
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+				'validate_callback' => 'rest_validate_request_arg',
+			),
+			'sort'     => [],
+			'_fields'  => [],
+		);
 	}
 }
