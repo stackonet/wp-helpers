@@ -1,3 +1,14 @@
+#### 1.1.8
+* Update Data class to make compatible with array_column function.
+* Add Cacheable trait for handling caching functionality.
+* Add TableInfo trait for reading table metadata from database.
+* Update validate time method for validating 24 hours time.
+* Update term field example javaScript.
+* Add PostTypeModel class for working with custom post type.
+* Add TermModel class for working with custom term.
+* Add default value for minimum per_page for pagination.
+* Add sanitize method for REST sort parameter.
+
 #### 1.1.7
 * Fix error undefined variable panel for Setting Api.
 * Fix prepare statement error for creating and updating multiple items.

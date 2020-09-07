@@ -21,9 +21,9 @@ trait Cacheable {
 	/**
 	 * Saves the data to the cache.
 	 *
-	 * @param int|string $key    The cache key to use for retrieval later.
-	 * @param mixed      $data   The contents to store in the cache.
-	 * @param int        $expire Optional. When to expire the cache contents, in seconds. Default one month
+	 * @param int|string $key The cache key to use for retrieval later.
+	 * @param mixed $data The contents to store in the cache.
+	 * @param int $expire Optional. When to expire the cache contents, in seconds. Default one month
 	 *
 	 * @return bool True on success, false on failure.
 	 */
@@ -112,6 +112,6 @@ trait Cacheable {
 			return $this->table;
 		}
 
-		return 'stackonet';
+		return md5( static::class );
 	}
 }

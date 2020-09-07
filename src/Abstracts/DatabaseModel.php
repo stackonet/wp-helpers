@@ -91,8 +91,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		if ( $data ) {
 			$this->data = $this->read( $data );
 		}
-		$this->primaryKey     = static::__get_primary_key( $this->get_table_name() );
-		$this->primaryKeyType = static::__get_primary_key_data_format( $this->get_table_name() );
+		$this->primaryKey     = static::get_primary_key( $this->get_table_name() );
+		$this->primaryKeyType = static::get_primary_key_data_format( $this->get_table_name() );
 	}
 
 	/**
@@ -129,7 +129,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 				}
 			}
 
-			if ( in_array( $this->deleted_at, $this->get_columns_names() ) ) {
+			if ( in_array( $this->deleted_at, static::get_columns_names( $table ) ) ) {
 				if ( 'trash' == $status ) {
 					$query .= " AND {$this->deleted_at} IS NOT NULL";
 				} else {
@@ -186,9 +186,11 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function create( array $data ) {
 		global $wpdb;
-		list( $_data, $_format ) = $this->format_item_for_db( $data, $this->get_default_data() );
+		$table = $this->get_table_name();
 
-		$wpdb->insert( $this->get_table_name(), $_data, $_format );
+		list( $_data, $_format ) = $this->format_item_for_db( $data, static::get_default_data( $table ) );
+
+		$wpdb->insert( $table, $_data, $_format );
 
 		// Update cache change
 		$this->set_cache_last_changed();
@@ -207,9 +209,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table         = $this->get_table_name();
 		$current_time  = current_time( 'mysql' );
-		$tableColumns  = $this->get_column_info();
-		$columns_names = array_keys( $tableColumns );
-		$default       = $this->get_default_data();
+		$columns_names = static::get_columns_names( $table );
+		$default       = static::get_default_data( $table );
 
 		$values = [];
 		foreach ( $data as $index => $item ) {
@@ -259,7 +260,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		// Database table columns
-		$columnsNames = $this->get_columns_names();
+		$columnsNames = static::get_columns_names( $table );
 
 		$_data = [];
 		foreach ( $data as $columnName => $nawValue ) {
@@ -285,7 +286,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$_data[ $this->deleted_at ] = null;
 		}
 
-		$dataFormat = $this->get_data_format_for_db( $_data );
+		$dataFormat = static::get_data_format_for_db( $table, $_data );
 
 		if ( $wpdb->update( $table, $_data, [ $this->primaryKey => $id ], $dataFormat, $this->primaryKeyType ) ) {
 			return true;
@@ -315,7 +316,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table         = $this->get_table_name();
 		$current_time  = current_time( 'mysql' );
-		$columns_names = $this->get_columns_names();
+		$columns_names = static::get_columns_names( $table );
 
 		$values = [];
 		foreach ( $data as $index => $item ) {
@@ -514,7 +515,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			}
 		}
 
-		$default = $this->get_default_data();
+		$table_name = $this->get_table_name();
+		$default    = static::get_default_data( $table_name );
 
 		if ( is_array( $data ) ) {
 			$item = [];
@@ -523,7 +525,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 				$item[ $columnName ] = $this->unserialize( $temp_data );
 			}
 
-			return $this->format_data_by_type( $item );
+			return static::format_data_by_type( $table_name, $item );
 		}
 
 		return $default;
@@ -627,7 +629,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$per_page = isset( $args['per_page'] ) ? intval( $args['per_page'] ) : $this->perPage;
 		$offset   = $this->calculate_offset( $current_page, $per_page );
 
-		$orderby = isset( $args['orderby'] ) && in_array( $args['orderby'], $this->get_columns_names() )
+		$orderby = isset( $args['orderby'] ) && in_array( $args['orderby'], static::get_columns_names( $this->get_table_name() ) )
 			? $args['orderby'] : $this->primaryKey;
 		$order   = isset( $args['order'] ) && 'ASC' == $args['order'] ? 'ASC' : 'DESC';
 
@@ -660,7 +662,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @return string
 	 */
 	protected function get_order_by( array $args ) {
-		$columnsNames = $this->get_columns_names();
+		$columnsNames = static::get_columns_names( $this->get_table_name() );
 		$orders_by    = isset( $args['order_by'] ) ? $args['order_by'] : [];
 		$orders_by    = is_string( $orders_by ) ? explode( ",", $orders_by ) : $orders_by;
 		$valid_orders = [ 'ASC', 'DESC' ];
@@ -709,8 +711,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Format item for database
 	 *
-	 * @param array       $data         User provided data
-	 * @param array       $default_data Default data. Previous data for existing record
+	 * @param array $data User provided data
+	 * @param array $default_data Default data. Previous data for existing record
 	 * @param string|null $current_time Current datetime
 	 *
 	 * @return array
@@ -755,57 +757,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			}
 		}
 
-		$_format = $this->get_data_format_for_db( $_data );
+		$_format = static::get_data_format_for_db( $this->get_table_name(), $_data );
 
 		return array( $_data, $_format );
-	}
-
-	/**
-	 * Get data format for db
-	 *
-	 * @param array $data
-	 *
-	 * @return array
-	 */
-	public function get_data_format_for_db( array $data ) {
-		return static::__get_data_format_for_db( $this->get_table_name(), $data );
-	}
-
-	/**
-	 * Get column name
-	 *
-	 * @return array
-	 */
-	public function get_columns_names() {
-		return static::__get_columns_names( $this->get_table_name() );
-	}
-
-	/**
-	 * Get default data
-	 *
-	 * @return array
-	 */
-	public function get_default_data() {
-		return static::__get_default_data( $this->get_table_name() );
-	}
-
-	/**
-	 * Get column info
-	 *
-	 * @return array
-	 */
-	public function get_column_info() {
-		return static::__get_formatted_info( $this->get_table_name() );
-	}
-
-	/**
-	 * Format data by type
-	 *
-	 * @param array $data
-	 *
-	 * @return array
-	 */
-	public function format_data_by_type( array $data ) {
-		return static::__format_data_by_type( $this->get_table_name(), $data );
 	}
 }
