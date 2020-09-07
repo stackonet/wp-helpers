@@ -33,6 +33,42 @@ trait TableInfo {
 	}
 
 	/**
+	 * Get primary key
+	 *
+	 * @param string $table
+	 *
+	 * @return string
+	 */
+	public static function __get_primary_key( string $table ): string {
+		$primary_key = 'id';
+		foreach ( static::__get_column_info( $table ) as $release ) {
+			if ( isset( $release['primary'] ) ) {
+				$primary_key = $release['field'];
+			}
+		}
+
+		return $primary_key;
+	}
+
+	/**
+	 * Get primary key data format
+	 *
+	 * @param string $table
+	 *
+	 * @return string
+	 */
+	public static function __get_primary_key_data_format( string $table ): string {
+		$data_format = '%d';
+		foreach ( static::__get_column_info( $table ) as $release ) {
+			if ( isset( $release['primary'] ) ) {
+				$data_format = $release['data_format'];
+			}
+		}
+
+		return $data_format;
+	}
+
+	/**
 	 * Get column name
 	 *
 	 * @param string $table

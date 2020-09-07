@@ -392,7 +392,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @return array
 	 */
-	public static function get_pagination_data( $total_items, $per_page = 20, $current_page = 1 ) {
+	public static function get_pagination_data( $total_items = 0, $per_page = 20, $current_page = 1 ) {
 		$current_page = max( intval( $current_page ), 1 );
 		$per_page     = max( intval( $per_page ), 1 );
 		$total_items  = intval( $total_items );
@@ -439,17 +439,17 @@ class ApiController extends WP_REST_Controller {
 	 * @return array Query parameters for the collection.
 	 */
 	public function get_collection_params() {
-		return array(
-			'context'  => $this->get_context_param(),
-			'page'     => array(
+		return [
+			'context'         => $this->get_context_param(),
+			'page'            => [
 				'description'       => __( 'Current page of the collection.' ),
 				'type'              => 'integer',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 				'validate_callback' => 'rest_validate_request_arg',
 				'minimum'           => 1,
-			),
-			'per_page' => array(
+			],
+			'per_page'        => [
 				'description'       => __( 'Maximum number of items to be returned in result set.' ),
 				'type'              => 'integer',
 				'default'           => 10,
@@ -457,15 +457,18 @@ class ApiController extends WP_REST_Controller {
 				'maximum'           => 100,
 				'sanitize_callback' => 'absint',
 				'validate_callback' => 'rest_validate_request_arg',
-			),
-			'search'   => array(
+			],
+			'search'          => [
 				'description'       => __( 'Limit results to those matching a string.' ),
 				'type'              => 'string',
 				'sanitize_callback' => 'sanitize_text_field',
 				'validate_callback' => 'rest_validate_request_arg',
-			),
-			'sort'     => [],
-			'_fields'  => [],
-		);
+			],
+			'sort'            => [
+				'type' => 'string',
+			],
+			'_fields'         => [],
+			'_fields_exclude' => [],
+		];
 	}
 }

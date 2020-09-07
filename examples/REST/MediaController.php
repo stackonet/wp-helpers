@@ -38,11 +38,21 @@ class MediaController extends ApiController {
 	 */
 	public function register_routes() {
 		register_rest_route( $this->namespace, '/media', [
-			[ 'methods' => WP_REST_Server::READABLE, 'callback' => [ $this, 'get_items' ], ],
-			[ 'methods' => WP_REST_Server::CREATABLE, 'callback' => [ $this, 'create_item' ], ],
+			[
+				'methods'  => WP_REST_Server::READABLE,
+				'callback' => [ $this, 'get_items' ],
+				'args'     => $this->get_collection_params(),
+			],
+			[
+				'methods'  => WP_REST_Server::CREATABLE,
+				'callback' => [ $this, 'create_item' ],
+			],
 		] );
 		register_rest_route( $this->namespace, '/media/(?P<id>\d+)', [
-			[ 'methods' => WP_REST_Server::DELETABLE, 'callback' => [ $this, 'delete_item' ], ],
+			[
+				'methods'  => WP_REST_Server::DELETABLE,
+				'callback' => [ $this, 'delete_item' ],
+			],
 		] );
 	}
 
@@ -173,11 +183,11 @@ class MediaController extends ApiController {
 	 * If current user can delete media
 	 *
 	 * @param WP_Post $post
-	 * @param string $token
+	 * @param string  $token
 	 *
 	 * @return bool
 	 */
-	private static function can_delete_media( $post, $token = '' ) {
+	private static function can_delete_media( WP_Post $post, $token = '' ) {
 		if ( current_user_can( 'manage_options' ) ) {
 			return true;
 		}
@@ -197,28 +207,25 @@ class MediaController extends ApiController {
 	/**
 	 * Prepares the item for the REST response.
 	 *
-	 * @param mixed $item WordPress representation of the item.
-	 * @param WP_REST_Request $request Request object.
+	 * @param int             $attachment_id WordPress representation of the item.
+	 * @param WP_REST_Request $request       Request object.
 	 *
 	 * @return array
 	 */
-	public function prepare_item_for_response( $item, $request ) {
-		$image_id       = $item;
-		$title          = get_the_title( $image_id );
-		$token          = get_post_meta( $image_id, '_delete_token', true );
-		$attachment_url = wp_get_attachment_url( $image_id );
-		$image          = wp_get_attachment_image_src( $image_id, 'thumbnail' );
-		$full_image     = wp_get_attachment_image_src( $image_id, 'full' );
+	public function prepare_item_for_response( $attachment_id, $request ) {
+		$title          = get_the_title( $attachment_id );
+		$token          = get_post_meta( $attachment_id, '_delete_token', true );
+		$attachment_url = wp_get_attachment_url( $attachment_id );
+		$image          = wp_get_attachment_image_src( $attachment_id, 'thumbnail', true );
+		$full_image     = wp_get_attachment_image_src( $attachment_id, 'full' );
 
-		$response = [
-			'id'             => $image_id,
+		return [
+			'id'             => $attachment_id,
 			'title'          => $title,
 			'token'          => $token,
 			'attachment_url' => $attachment_url,
 			'thumbnail'      => [ 'src' => $image[0], 'width' => $image[1], 'height' => $image[2], ],
 			'full'           => [ 'src' => $full_image[0], 'width' => $full_image[1], 'height' => $full_image[2], ],
 		];
-
-		return $response;
 	}
 }

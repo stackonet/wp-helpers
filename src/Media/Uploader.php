@@ -10,6 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Uploader
+ *
  * @package Stackonet\WP\Framework\Media
  */
 class Uploader {
@@ -17,27 +18,25 @@ class Uploader {
 	 * Upload attachments
 	 *
 	 * @param array|UploadedFile $file
-	 * @param string $dir
+	 * @param string|null        $dir
 	 *
 	 * @return array
 	 */
 	public static function upload( $file, $dir = null ) {
 		$attachments = array();
 
-		if ( $file instanceof UploadedFile ) {
-			$id = self::uploadSingleFile( $file, $dir );
+		$files = $file instanceof UploadedFile ? [ $file ] : $file;
+		if ( ! is_array( $files ) ) {
+			return $attachments;
+		}
+
+		foreach ( $files as $uploaded_file ) {
+			if ( ! $uploaded_file instanceof UploadedFile ) {
+				continue;
+			}
+			$id = self::uploadSingleFile( $uploaded_file, $dir );
 
 			$attachments[]['attachment_id'] = is_wp_error( $id ) ? 0 : $id;
-		}
-		if ( is_array( $file ) ) {
-			foreach ( $file as $_file ) {
-				if ( ! $_file instanceof UploadedFile ) {
-					continue;
-				}
-				$id = self::uploadSingleFile( $_file, $dir );
-
-				$attachments[]['attachment_id'] = is_wp_error( $id ) ? 0 : $id;
-			}
 		}
 
 		return array_filter( $attachments );
@@ -47,11 +46,11 @@ class Uploader {
 	 * Upload attachment
 	 *
 	 * @param UploadedFile $file
-	 * @param string $dir
+	 * @param string|null  $dir
 	 *
 	 * @return int|WP_Error Media id on success.
 	 */
-	public static function uploadSingleFile( $file, $dir = null ) {
+	public static function uploadSingleFile( UploadedFile $file, $dir = null ) {
 		// Check if upload directory is writable
 		$upload_dir = static::get_upload_dir( $dir );
 		if ( is_wp_error( $upload_dir ) ) {
@@ -71,11 +70,11 @@ class Uploader {
 	 * Upload a file
 	 *
 	 * @param UploadedFile $file
-	 * @param string $directory
+	 * @param string       $directory
 	 *
 	 * @return string|WP_Error Uploaded file full path
 	 */
-	public static function uploadFile( UploadedFile $file, $directory ) {
+	public static function uploadFile( UploadedFile $file, string $directory ) {
 		if ( $file->getSize() > wp_max_upload_size() ) {
 			return new WP_Error( 'large_file_size', 'File size too large.' );
 		}
@@ -109,11 +108,11 @@ class Uploader {
 	 * Add attachment data
 	 *
 	 * @param UploadedFile $file
-	 * @param string $file_path
+	 * @param string       $file_path
 	 *
 	 * @return int|WP_Error
 	 */
-	protected static function add_attachment_data( UploadedFile $file, $file_path ) {
+	protected static function add_attachment_data( UploadedFile $file, string $file_path ) {
 		$upload_dir = wp_upload_dir();
 		$data       = array(
 			'guid'           => str_replace( $upload_dir['basedir'], $upload_dir['baseurl'], $file_path ),

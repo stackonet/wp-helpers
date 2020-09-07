@@ -9,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Data
+ *
  * @package Stackonet\WP\Framework\Abstracts
  */
 class Data implements ArrayAccess, JsonSerializable {
@@ -36,7 +37,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return mixed
 	 */
-	public function __get( $name ) {
+	public function __get( string $name ) {
 		return $this->get( $name );
 	}
 
@@ -47,7 +48,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	public function __isset( $name ) {
+	public function __isset( string $name ) {
 		return $this->has( $name );
 	}
 
@@ -67,29 +68,29 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	public function has( $key ) {
+	public function has( string $key ) {
 		return isset( $this->data[ $key ] );
 	}
 
 	/**
 	 * Set collection item
 	 *
-	 * @param string $key The data key
-	 * @param mixed $value The data value
+	 * @param string $key   The data key
+	 * @param mixed  $value The data value
 	 */
-	public function set( $key, $value ) {
+	public function set( string $key, $value ) {
 		$this->data[ $key ] = $value;
 	}
 
 	/**
 	 * Get collection item for key
 	 *
-	 * @param string $key The data key
-	 * @param mixed $default The default value to return if data key does not exist
+	 * @param string $key     The data key
+	 * @param mixed  $default The default value to return if data key does not exist
 	 *
 	 * @return mixed The key's value, or the default value
 	 */
-	public function get( $key, $default = '' ) {
+	public function get( string $key, $default = '' ) {
 		if ( $this->has( $key ) ) {
 			$value = $this->data[ $key ];
 			if ( is_numeric( $value ) ) {
@@ -107,7 +108,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @param string $key The data key
 	 */
-	public function remove( $key ) {
+	public function remove( string $key ) {
 		if ( $this->has( $key ) ) {
 			unset( $this->data[ $key ] );
 		}
@@ -139,7 +140,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * Offset to set
 	 *
 	 * @param mixed $offset The offset to assign the value to.
-	 * @param mixed $value The value to set.
+	 * @param mixed $value  The value to set.
 	 *
 	 * @return void
 	 */

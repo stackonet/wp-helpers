@@ -83,13 +83,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	protected $cache_group = 'stackonet';
 
 	/**
-	 * Table column info
-	 *
-	 * @var array
-	 */
-	protected static $columns = [];
-
-	/**
 	 * Model constructor.
 	 *
 	 * @param mixed $data
@@ -98,6 +91,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		if ( $data ) {
 			$this->data = $this->read( $data );
 		}
+		$this->primaryKey     = static::__get_primary_key( $this->get_table_name() );
+		$this->primaryKeyType = static::__get_primary_key_data_format( $this->get_table_name() );
 	}
 
 	/**
@@ -246,6 +241,63 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
+	 * Update data
+	 *
+	 * @param array $data
+	 *
+	 * @return bool
+	 */
+	public function update( array $data ) {
+		global $wpdb;
+		$table        = $this->get_table_name();
+		$id           = isset( $data[ $this->primaryKey ] ) ? intval( $data[ $this->primaryKey ] ) : 0;
+		$current_time = current_time( 'mysql' );
+
+		$item = $this->find_by_id( $id );
+		if ( empty( $item ) ) {
+			return false;
+		}
+
+		// Database table columns
+		$columnsNames = $this->get_columns_names();
+
+		$_data = [];
+		foreach ( $data as $columnName => $nawValue ) {
+			if ( ! in_array( $columnName, $columnsNames ) ) {
+				continue;
+			}
+			$current_data = isset( $item[ $columnName ] ) ? $item[ $columnName ] : null;
+			$temp_data    = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $current_data;
+			if ( $temp_data == $current_data ) {
+				continue;
+			}
+			$_data[ $columnName ] = $this->serialize( $temp_data );
+		}
+		$_data[ $this->primaryKey ] = $id;
+
+		// Update updated time
+		if ( in_array( $this->updated_at, $columnsNames ) ) {
+			$_data[ $this->updated_at ] = $current_time;
+		}
+
+		// Update deleted time
+		if ( in_array( $this->deleted_at, $columnsNames ) ) {
+			$_data[ $this->deleted_at ] = null;
+		}
+
+		$dataFormat = $this->get_data_format_for_db( $_data );
+
+		if ( $wpdb->update( $table, $_data, [ $this->primaryKey => $id ], $dataFormat, $this->primaryKeyType ) ) {
+			return true;
+		}
+
+		// Delete cache
+		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
+
+		return false;
+	}
+
+	/**
 	 * Update multiple record
 	 *
 	 * @param array $data
@@ -309,63 +361,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		}
 
 		return (bool) $query;
-	}
-
-	/**
-	 * Update data
-	 *
-	 * @param array $data
-	 *
-	 * @return bool
-	 */
-	public function update( array $data ) {
-		global $wpdb;
-		$table        = $this->get_table_name();
-		$id           = isset( $data[ $this->primaryKey ] ) ? intval( $data[ $this->primaryKey ] ) : 0;
-		$current_time = current_time( 'mysql' );
-
-		$item = $this->find_by_id( $id );
-		if ( empty( $item ) ) {
-			return false;
-		}
-
-		// Database table columns
-		$columnsNames = $this->get_columns_names();
-
-		$_data = [];
-		foreach ( $data as $columnName => $nawValue ) {
-			if ( ! in_array( $columnName, $columnsNames ) ) {
-				continue;
-			}
-			$current_data = isset( $item[ $columnName ] ) ? $item[ $columnName ] : null;
-			$temp_data    = isset( $data[ $columnName ] ) ? $data[ $columnName ] : $current_data;
-			if ( $temp_data == $current_data ) {
-				continue;
-			}
-			$_data[ $columnName ] = $this->serialize( $temp_data );
-		}
-		$_data[ $this->primaryKey ] = $id;
-
-		// Update updated time
-		if ( in_array( $this->updated_at, $columnsNames ) ) {
-			$_data[ $this->updated_at ] = $current_time;
-		}
-
-		// Update deleted time
-		if ( in_array( $this->deleted_at, $columnsNames ) ) {
-			$_data[ $this->deleted_at ] = null;
-		}
-
-		$dataFormat = static::__get_data_format_for_db( $table, array_keys( $_data ) );
-
-		if ( $wpdb->update( $table, $_data, [ $this->primaryKey => $id ], array_values( $dataFormat ), $this->primaryKeyType ) ) {
-			return true;
-		}
-
-		// Delete cache
-		$this->delete_cache( $this->get_cache_key_for_single_item( $id ) );
-
-		return false;
 	}
 
 	/**
@@ -535,17 +530,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
-	 * Format data by type
-	 *
-	 * @param array $data
-	 *
-	 * @return array
-	 */
-	public function format_data_by_type( array $data ) {
-		return static::__format_data_by_type( $this->get_table_name(), $data );
-	}
-
-	/**
 	 * Get pagination data
 	 *
 	 * @param int $total_items
@@ -554,7 +538,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return array
 	 */
-	public static function get_pagination( $total_items, $per_page = 10, $current_page = 1 ) {
+	public static function get_pagination( $total_items = 0, $per_page = 10, $current_page = 1 ) {
+		$per_page = max( intval( $per_page ), 1 );
+
 		return array(
 			"total_items"  => $total_items,
 			"per_page"     => $per_page,
@@ -615,7 +601,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Unserialize value only if it was serialized.
 	 *
-	 * @param string $data Maybe unserialized original, if is needed.
+	 * @param mixed $data Maybe unserialized original, if is needed.
 	 *
 	 * @return mixed Unserialized data can be any type.
 	 */
@@ -702,40 +688,13 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
-	 * Get column name
-	 *
-	 * @return array
-	 */
-	public function get_columns_names() {
-		return static::__get_columns_names( $this->get_table_name() );
-	}
-
-	/**
-	 * Get default data
-	 *
-	 * @return array
-	 */
-	public function get_default_data() {
-		return static::__get_default_data( $this->get_table_name() );
-	}
-
-	/**
-	 * Get column info
-	 *
-	 * @return array
-	 */
-	public function get_column_info() {
-		return static::__get_formatted_info( $this->get_table_name( $this->table ) );
-	}
-
-	/**
 	 * Get table name
 	 *
-	 * @param string $table
+	 * @param string|null $table
 	 *
 	 * @return string
 	 */
-	public function get_table_name( $table = null ) {
+	public function get_table_name( ?string $table = null ) {
 		if ( empty( $table ) ) {
 			$table = $this->table;
 		}
@@ -750,9 +709,9 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Format item for database
 	 *
-	 * @param array  $data         User provided data
-	 * @param array  $default_data Default data. Previous data for existing record
-	 * @param string $current_time Current datetime
+	 * @param array       $data         User provided data
+	 * @param array       $default_data Default data. Previous data for existing record
+	 * @param string|null $current_time Current datetime
 	 *
 	 * @return array
 	 */
@@ -796,8 +755,57 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			}
 		}
 
-		$_format = static::__get_data_format_for_db( $this->get_table_name(), $_data );
+		$_format = $this->get_data_format_for_db( $_data );
 
 		return array( $_data, $_format );
+	}
+
+	/**
+	 * Get data format for db
+	 *
+	 * @param array $data
+	 *
+	 * @return array
+	 */
+	public function get_data_format_for_db( array $data ) {
+		return static::__get_data_format_for_db( $this->get_table_name(), $data );
+	}
+
+	/**
+	 * Get column name
+	 *
+	 * @return array
+	 */
+	public function get_columns_names() {
+		return static::__get_columns_names( $this->get_table_name() );
+	}
+
+	/**
+	 * Get default data
+	 *
+	 * @return array
+	 */
+	public function get_default_data() {
+		return static::__get_default_data( $this->get_table_name() );
+	}
+
+	/**
+	 * Get column info
+	 *
+	 * @return array
+	 */
+	public function get_column_info() {
+		return static::__get_formatted_info( $this->get_table_name() );
+	}
+
+	/**
+	 * Format data by type
+	 *
+	 * @param array $data
+	 *
+	 * @return array
+	 */
+	public function format_data_by_type( array $data ) {
+		return static::__format_data_by_type( $this->get_table_name(), $data );
 	}
 }
