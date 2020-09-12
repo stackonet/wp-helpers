@@ -39,9 +39,9 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * Example
 	 * [
 	 *  [
-	 *      'meta_key_name'     => '_image_id',
-	 *      'post_key_name'     => '_image_id',
-	 *      'rest_param_name'   => 'image_id',
+	 *      'meta_key'          => '_image_id',
+	 *      'post_key'          => '_image_id',
+	 *      'rest_param'        => 'image_id',
 	 *      'sanitize_callback' => 'absint'
 	 *  ]
 	 * ]
@@ -103,6 +103,15 @@ abstract class PostTypeModel implements JsonSerializable {
 	}
 
 	/**
+	 * Get post status
+	 *
+	 * @return string
+	 */
+	public function get_status() {
+		return $this->post->post_status;
+	}
+
+	/**
 	 * Get content
 	 *
 	 * @return string
@@ -159,7 +168,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return mixed
 	 */
-	public function get_meta( $key, $default = '' ) {
+	public function get_meta( string $key, $default = '' ) {
 		if ( isset( $this->meta_data[ $key ] ) ) {
 			return $this->meta_data[ $key ];
 		}
@@ -173,6 +182,9 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * Read meta data
 	 */
 	protected function read_meta_data() {
+		foreach ( static::$meta_fields as $field ) {
+			$this->meta_data[ $field['meta_key'] ] = get_post_meta( $this->get_id(), $field['meta_key'], true );
+		}
 		$this->meta_data_read = true;
 	}
 
@@ -213,13 +225,32 @@ abstract class PostTypeModel implements JsonSerializable {
 		$args = wp_parse_args( $args, array(
 			'posts_per_page' => - 1,
 			'post_status'    => 'publish',
-			'order'          => 'ASC',
+			'order'          => 'DESC',
 			'orderby'        => 'date',
 		) );
 
 		$args['post_type'] = static::$post_type;
 
 		return new WP_Query( $args );
+	}
+
+
+	/**
+	 * Find data
+	 *
+	 * @param array $args
+	 *
+	 * @return static[]|array
+	 */
+	public static function find( array $args = [] ) {
+		$query = static::query( $args );
+		$posts = $query->get_posts();
+		$items = [];
+		foreach ( $posts as $post ) {
+			$items[] = new static( $post );
+		}
+
+		return $items;
 	}
 
 	/**
@@ -266,7 +297,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	public static function trash( $id ) {
+	public static function trash( $id = 0 ) {
 		return (bool) wp_trash_post( $id );
 	}
 
@@ -277,7 +308,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	public static function restore( $id ) {
+	public static function restore( $id = 0 ) {
 		return (bool) wp_untrash_post( $id );
 	}
 
@@ -358,12 +389,17 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @param WP_Post|int $post
 	 * @param string      $source
+	 * @param array       $values
 	 */
-	public static function save_meta_data( $post, $source = 'admin-ui' ) {
+	public static function save_meta_data( $post, $source = 'admin-ui', array $values = [] ) {
 		$post = get_post( $post );
 
 		if ( $post->post_type != static::$post_type ) {
 			return;
+		}
+
+		if ( empty( $values ) ) {
+			$values = $_REQUEST;
 		}
 
 		$default = [
@@ -381,7 +417,7 @@ abstract class PostTypeModel implements JsonSerializable {
 			if ( empty( $meta_key ) || empty( $field_key ) ) {
 				continue;
 			}
-			$value = isset( $_REQUEST[ $field_key ] ) ? $_REQUEST[ $field_key ] : '';
+			$value = isset( $values[ $field_key ] ) ? $values[ $field_key ] : '';
 			if ( isset( $field['sanitize_callback'] ) && is_callable( $field['sanitize_callback'] ) ) {
 				$value = call_user_func( $field['sanitize_callback'], $value );
 			}
