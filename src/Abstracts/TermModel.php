@@ -37,9 +37,9 @@ abstract class TermModel implements JsonSerializable {
 	 * Example
 	 * [
 	 *  [
-	 *      'meta_key_name'     => '_image_id',
-	 *      'post_key_name'     => '_image_id',
-	 *      'rest_param_name'   => 'image_id',
+	 *      'meta_key'          => '_image_id',
+	 *      'post_key'          => '_image_id',
+	 *      'rest_param'        => 'image_id',
 	 *      'sanitize_callback' => 'absint'
 	 *  ]
 	 * ]
