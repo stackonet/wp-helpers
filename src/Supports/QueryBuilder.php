@@ -2,7 +2,12 @@
 
 namespace Stackonet\WP\Framework\Supports;
 
+use Stackonet\WP\Framework\Traits\TableInfo;
+
 class QueryBuilder {
+
+	use TableInfo;
+
 	/**
 	 * @var array
 	 */
@@ -15,6 +20,124 @@ class QueryBuilder {
 		'join'     => [],
 		'where'    => [],
 	];
+
+	/**
+	 * Dump data for debug
+	 *
+	 * @return array
+	 */
+	public function dump() {
+		return [
+			'sql'   => $this->get_query_sql(),
+			'query' => $this->query,
+		];
+	}
+
+	/**
+	 * Get compare operators
+	 *
+	 * @return string[]
+	 */
+	public function get_compare_operators(): array {
+		return [ '=', '!=', '>', '>=', '<', '<=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN' ];
+	}
+
+	/**
+	 * Sanitize where args
+	 * ==============================================================
+	 * 0 -- column, 1 -- value, 2 -- compare operator, 3 -- data type
+	 *
+	 * @param array $args
+	 *
+	 * @return array
+	 */
+	private function sanitize_where_args( array $args ): array {
+		$column = $args[0];
+		$value  = $args[1];
+
+		if ( isset( $args[2] ) && in_array( $args[2], $this->get_compare_operators() ) ) {
+			$compare = $args[2];
+		} else {
+			$compare = is_array( $value ) ? 'IN' : '=';
+		}
+
+		$table_info = static::get_table_info( $this->query['table'] );
+		if ( ! isset( $table_info[ $column ] ) ) {
+			return [];
+		}
+		$column_info = $table_info[ $column ];
+		$data_format = $column_info['data_format'];
+
+		if ( $data_format == '%d' ) {
+			$type              = 'integer';
+			$sanitize_callback = 'intval';
+		} elseif ( $data_format == '%f' ) {
+			$type              = 'float';
+			$sanitize_callback = 'floatval';
+		} else {
+			$type              = 'string';
+			$sanitize_callback = 'esc_sql';
+		}
+
+		return [
+			'column'            => $column,
+			'compare'           => $compare,
+			'type'              => $type,
+			'data_format'       => $data_format,
+			'sanitize_callback' => $sanitize_callback,
+			'nullable'          => $column_info['nullable'],
+			'value'             => $value,
+		];
+	}
+
+	/**
+	 * Get SQL for where
+	 *
+	 * @param $item
+	 *
+	 * @return string
+	 */
+	private function _get_sql_for_where( $item ): string {
+		global $wpdb;
+
+		if ( $item['nullable'] && is_null( $item['value'] ) ) {
+			$item['value'] = 'NULL';
+		}
+
+		if ( is_array( $item['value'] ) ) {
+			$value = array_map( $item['sanitize_callback'], $item['value'] );
+		} else {
+			$value = call_user_func( $item['sanitize_callback'], $item['value'] );
+		}
+
+		$operator = $item['compare'];
+		$sql      = '';
+		if ( is_array( $value ) ) {
+			if ( in_array( $operator, [ 'BETWEEN', 'NOT BETWEEN' ] ) ) {
+				$sql = $wpdb->prepare(
+					"{$item['column']} {$operator} {$item['data_format']} AND {$item['data_format']}",
+					$value[0], $value[1]
+				);
+			}
+			if ( in_array( $operator, [ 'IN', 'NOT IN', ] ) ) {
+				if ( 'string' == $item['type'] ) {
+					$sql = "{$item['column']} {$operator}('" . implode( ",'", $value ) . "')";
+				} else {
+					$sql = "{$item['column']} {$operator}(" . implode( ", ", $value ) . ")";
+				}
+			}
+		} else {
+			if ( is_null( $value ) || 'NULL' == $value ) {
+				$sql = "{$item['column']} IS NULL";
+			} elseif ( 'NOT NULL' == strtoupper( $value ) ) {
+				$sql = "{$item['column']} IS NOT NULL";
+			} else {
+				$sql = $wpdb->prepare( "{$item['column']} {$operator} {$item['data_format']}", $value );
+			}
+		}
+
+		return $sql;
+	}
 
 	/**
 	 * Get table name
@@ -58,9 +181,14 @@ class QueryBuilder {
 		return isset( $query['column'] ) || isset( $query['value'] );
 	}
 
+	/**
+	 * Get query SQL
+	 *
+	 * @return string
+	 */
 	public function get_query_sql() {
 		$where = [];
-		foreach ( $this->query['where'] as $item ) {
+		foreach ( array_filter( $this->query['where'] ) as $item ) {
 			if ( $this->is_first_order_clause( $item ) ) {
 				$where[] = $this->_get_sql_for_where( $item );
 			} else {
@@ -101,18 +229,19 @@ class QueryBuilder {
 
 	/**
 	 * Build where query
-	 *
 	 * Example users
 	 * =================================================
-	 * where( 'post_type', 'post' )
+	 * where( 'post_type', 'page' )
 	 * where( 'post_type', 'post', '!=' )
 	 * where( 'post_type', [ 'post', 'page' ], 'IN' )
 	 * where( [ ['post_type', 'post'], ['post_type', 'page'] ], 'OR' )
+	 * where( 'deleted_at', 'NULL' );
+	 * where( 'updated_at', 'NOT NULL' );
 	 *
 	 * @param array|string $column
 	 * @param string|array $value
-	 * @param string $compare
-	 * @param string $relation
+	 * @param string       $compare
+	 * @param string       $relation
 	 *
 	 * @return $this
 	 */
@@ -125,20 +254,10 @@ class QueryBuilder {
 				if ( count( $item ) < 2 ) {
 					continue;
 				}
-				if ( isset( $item[2] ) && in_array( $item[2], $this->get_compare_operators() ) ) {
-					$_compare = $item[2];
-				} else {
-					$_compare = is_array( $item[1] ) ? 'IN' : '=';
-				}
-				$where[] = [
-					'column'  => $item[0],
-					'value'   => $item[1],
-					'compare' => $_compare,
-					'type'    => isset( $item[3] ) ? $item['3'] : 'string',
-				];
+				$where[] = $this->sanitize_where_args( $item );
 			}
 		} else {
-			$where = [ 'column' => $column, 'value' => $value, 'compare' => $compare, 'type' => 'string' ];
+			$where = $this->sanitize_where_args( $args );
 		}
 
 		$this->query['where'][] = $where;
@@ -150,31 +269,24 @@ class QueryBuilder {
 	}
 
 	public function whereBetween() {
-
 	}
 
 	public function whereIn( string $column, array $data ) {
-
 	}
 
 	public function whereNotIn( string $column, array $data ) {
-
 	}
 
 	public function orWhereIn( string $column, array $data ) {
-
 	}
 
 	public function orWhereNotIn( string $column, array $data ) {
-
 	}
 
 	public function whereNull( string $column ) {
-
 	}
 
 	public function orWhereNull( string $column ) {
-
 	}
 
 	public function get() {
@@ -184,123 +296,44 @@ class QueryBuilder {
 	 * Get a single row
 	 */
 	public function first() {
-
 	}
 
 	public function value() {
-
 	}
 
 	public function find() {
-
 	}
 
 	public function pluck() {
-
 	}
 
 	public function count() {
-
 	}
 
 	public function max() {
-
 	}
 
 	public function avg() {
-
 	}
 
 	public function exists() {
-
 	}
 
 	public function doesntExist() {
-
 	}
 
 	public function select() {
-
 	}
 
 	public function distinct() {
-
 	}
 
 	public function join( string $reference_table, string $reference_column, string $table_column, string $type = 'INNER' ) {
-
 	}
 
 	public function leftJoin() {
-
 	}
 
 	public function rightJoin() {
-
-	}
-
-	/**
-	 * Get compare operators
-	 *
-	 * @return string[]
-	 */
-	public function get_compare_operators(): array {
-		return [
-			'=',
-			'!=',
-			'>',
-			'>=',
-			'<',
-			'<=',
-			'LIKE',
-			'NOT LIKE',
-			'NOT IN',
-			'BETWEEN',
-			'NOT BETWEEN',
-		];
-	}
-
-	/**
-	 * Get SQL for where
-	 *
-	 * @param $item
-	 *
-	 * @return mixed|string
-	 */
-	private function _get_sql_for_where( $item ) {
-		if ( is_null( $item['value'] ) ) {
-			$item['value'] = 'NULL';
-		}
-		$sanitize_callback = 'esc_sql';
-		if ( 'integer' == $item['type'] ) {
-			$sanitize_callback = 'intval';
-		} elseif ( 'float' == $item['type'] ) {
-			$sanitize_callback = 'floatval';
-		}
-		if ( is_array( $item['value'] ) ) {
-			$value = array_map( $sanitize_callback, $item['value'] );
-			if ( in_array( $item['compare'], [ 'BETWEEN', 'NOT BETWEEN' ] ) ) {
-				if ( in_array( $sanitize_callback, [ 'intval', 'floatval' ] ) ) {
-					$value = "{$value[0]} AND {$value[1]}";
-				} else {
-					$value = "'{$value[0]}' AND '{$value[1]}'";
-				}
-			} else if ( 'string' == $item['type'] ) {
-				$value = "'" . implode( ",'", $value ) . "'";
-			} else {
-				$value = implode( ",'", $value );
-			}
-		} else {
-			$value = call_user_func( $sanitize_callback, $item['value'] );
-		}
-		$operator = $item['compare'];
-		$sql      = "{$item['column']} {$operator} {$value}";
-		if ( is_null( $value ) || 'NULL' == $value ) {
-			$sql = "{$item['column']} IS NULL";
-		} elseif ( 'NOT NULL' == strtoupper( $value ) ) {
-			$sql = "{$item['column']} IS NOT NULL";
-		}
-
-		return $sql;
 	}
 }
