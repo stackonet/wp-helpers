@@ -207,8 +207,14 @@ class QueryBuilder {
 			}
 		}
 
+		$order_by = [];
+		foreach ( array_filter( $this->query['order_by'] ) as $order ) {
+			$order_by[] = $order['column'] . ' ' . $order['order'];
+		}
+
 		$sql = "SELECT {$this->query['select']} FROM {$this->query['table']}";
 		$sql .= " WHERE " . join( ' AND ', $where );
+		$sql .= " ORDER BY " . implode( ", ", $order_by );
 
 		return $sql;
 	}
@@ -222,7 +228,10 @@ class QueryBuilder {
 	 * @return static
 	 */
 	public function order_by( string $column, string $order = 'DESC' ) {
-		$this->query['order_by'][] = [ 'column' => $column, 'order' => $order ];
+		$table_info = static::get_table_info( $this->query['table'] );
+		if ( array_key_exists( $column, $table_info ) && in_array( $order, [ 'ASC', 'DESC' ] ) ) {
+			$this->query['order_by'][] = [ 'column' => $column, 'order' => $order ];
+		}
 
 		return $this;
 	}
