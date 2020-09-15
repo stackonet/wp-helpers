@@ -12,13 +12,14 @@ class QueryBuilder {
 	 * @var array
 	 */
 	protected $query = [
-		'table'    => '',
-		'select'   => '*',
-		'limit'    => - 1,
-		'offset'   => 0,
-		'order_by' => [],
-		'join'     => [],
-		'where'    => [],
+		'table'       => '',
+		'table_alias' => '',
+		'select'      => '*',
+		'limit'       => - 1,
+		'offset'      => 0,
+		'order_by'    => [],
+		'join'        => [],
+		'where'       => [],
 	];
 
 	/**
@@ -165,6 +166,14 @@ class QueryBuilder {
 	public static function table( string $table ) {
 		$query_builder = new static;
 
+		$table = strtolower( $table );
+		if ( strpos( $table, 'as' ) !== false ) {
+			$data  = explode( 'as', $table );
+			$table = trim( $data[0] );
+
+			$query_builder->query['table_alias'] = trim( $data[1] );
+		}
+
 		$query_builder->query['table'] = $query_builder->get_table_name( $table );
 
 		return $query_builder;
@@ -215,6 +224,12 @@ class QueryBuilder {
 		$sql = "SELECT {$this->query['select']} FROM {$this->query['table']}";
 		$sql .= " WHERE " . join( ' AND ', $where );
 		$sql .= " ORDER BY " . implode( ", ", $order_by );
+		if ( $this->query['limit'] > 0 ) {
+			$sql .= " LIMIT " . intval( $this->query['limit'] );
+		}
+		if ( $this->query['offset'] >= 0 ) {
+			$sql .= " OFFSET " . intval( $this->query['offset'] );
+		}
 
 		return $sql;
 	}
@@ -231,6 +246,50 @@ class QueryBuilder {
 		$table_info = static::get_table_info( $this->query['table'] );
 		if ( array_key_exists( $column, $table_info ) && in_array( $order, [ 'ASC', 'DESC' ] ) ) {
 			$this->query['order_by'][] = [ 'column' => $column, 'order' => $order ];
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Set offset
+	 *
+	 * @param int $offset
+	 *
+	 * @return static
+	 */
+	public function offset( int $offset = 0 ) {
+		$this->query['offset'] = $offset;
+
+		return $this;
+	}
+
+	/**
+	 * Set limit
+	 *
+	 * @param int $limit
+	 *
+	 * @return static
+	 */
+	public function limit( int $limit ) {
+		$this->query['limit'] = $limit;
+
+		return $this;
+	}
+
+	/**
+	 * Set offset from page number
+	 *
+	 * @param int $page
+	 *
+	 * @return static
+	 */
+	public function page( int $page ) {
+		if ( $this->query['limit'] > 0 ) {
+			$page = max( 1, $page );
+
+			$offset = (int) ( $page - 1 ) * $this->query['limit'];
+			$this->offset( $offset );
 		}
 
 		return $this;
