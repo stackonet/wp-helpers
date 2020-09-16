@@ -35,6 +35,56 @@ class QueryBuilder {
 	}
 
 	/**
+	 * Get query SQL
+	 *
+	 * @return string
+	 */
+	public function get_query_sql() {
+		$where = [];
+		foreach ( array_filter( $this->query['where'] ) as $item ) {
+			if ( $this->is_first_order_clause( $item ) ) {
+				$where[] = $this->_get_sql_for_where( $item );
+			} else {
+				$relation = $item['relation'];
+				unset( $item['relation'] );
+				$_where = '(';
+				foreach ( $item as $index => $_item ) {
+					if ( $index > 0 ) {
+						$_where .= " {$relation} ";
+					}
+
+					$_where .= $this->_get_sql_for_where( $_item );
+				}
+				$_where  .= ')';
+				$where[] = $_where;
+			}
+		}
+
+		$order_by = [];
+		foreach ( array_filter( $this->query['order_by'] ) as $order ) {
+			$order_by[] = $order['column'] . ' ' . $order['order'];
+		}
+
+		$sql = "SELECT {$this->query['select']} FROM {$this->query['table']}";
+		if ( count( $this->query['join'] ) ) {
+			foreach ( $this->query['join'] as $join ) {
+				$_alias = ! empty( $join['table_alias'] ) ? "AS {$join['table_alias']}" : "";
+				$sql    .= " {$join['type']} {$join['table']} {$_alias} ON {$join['first_column']} = {$join['second_column']}";
+			}
+		}
+		$sql .= " WHERE " . join( ' AND ', $where );
+		$sql .= " ORDER BY " . implode( ", ", $order_by );
+		if ( $this->query['limit'] > 0 ) {
+			$sql .= " LIMIT " . intval( $this->query['limit'] );
+		}
+		if ( $this->query['offset'] >= 0 ) {
+			$sql .= " OFFSET " . intval( $this->query['offset'] );
+		}
+
+		return $sql;
+	}
+
+	/**
 	 * Get compare operators
 	 *
 	 * @return string[]
@@ -145,15 +195,44 @@ class QueryBuilder {
 	 *
 	 * @param string|null $table
 	 *
-	 * @return string
+	 * @return array
 	 */
-	public function get_table_name( string $table ) {
+	private function get_table_name( string $table ) {
 		global $wpdb;
-		if ( false !== strpos( $table, $wpdb->prefix ) ) {
-			return $table;
+
+		$table_alias = '';
+		if ( strpos( strtolower( $table ), 'as' ) !== false ) {
+			$data        = explode( ' ', $table );
+			$table       = trim( $data[0] );
+			$table_alias = trim( $data[2] );
+		}
+		$table = ( false !== strpos( $table, $wpdb->prefix ) ) ? $table : $wpdb->prefix . $table;
+
+		return [ $table, $table_alias ];
+	}
+
+	/**
+	 * Get column name
+	 *
+	 * @param string $column
+	 *
+	 * @return string[]
+	 */
+	public function get_column_name( string $column ) {
+		$_column = $table = $alias = '';
+		if ( strpos( $column, '.' ) !== false ) {
+			$data    = explode( '.', $column );
+			$table   = trim( $data[0] );
+			$_column = trim( $data[2] );
 		}
 
-		return $wpdb->prefix . $table;
+		if ( strpos( strtolower( $_column ), 'as' ) !== false ) {
+			$data2   = explode( ' ', $_column );
+			$_column = trim( $data2[0] );
+			$alias   = trim( $data2[2] );
+		}
+
+		return [ $_column, $alias, $table ];
 	}
 
 	/**
@@ -165,16 +244,10 @@ class QueryBuilder {
 	 */
 	public static function table( string $table ) {
 		$query_builder = new static;
+		$table         = $query_builder->get_table_name( $table );
 
-		$table = strtolower( $table );
-		if ( strpos( $table, 'as' ) !== false ) {
-			$data  = explode( 'as', $table );
-			$table = trim( $data[0] );
-
-			$query_builder->query['table_alias'] = trim( $data[1] );
-		}
-
-		$query_builder->query['table'] = $query_builder->get_table_name( $table );
+		$query_builder->query['table']       = $table[0];
+		$query_builder->query['table_alias'] = $table[1];
 
 		return $query_builder;
 	}
@@ -188,50 +261,6 @@ class QueryBuilder {
 	 */
 	protected function is_first_order_clause( array $query ) {
 		return isset( $query['column'] ) || isset( $query['value'] );
-	}
-
-	/**
-	 * Get query SQL
-	 *
-	 * @return string
-	 */
-	public function get_query_sql() {
-		$where = [];
-		foreach ( array_filter( $this->query['where'] ) as $item ) {
-			if ( $this->is_first_order_clause( $item ) ) {
-				$where[] = $this->_get_sql_for_where( $item );
-			} else {
-				$relation = $item['relation'];
-				unset( $item['relation'] );
-				$_where = '(';
-				foreach ( $item as $index => $_item ) {
-					if ( $index > 0 ) {
-						$_where .= " {$relation} ";
-					}
-
-					$_where .= $this->_get_sql_for_where( $_item );
-				}
-				$_where  .= ')';
-				$where[] = $_where;
-			}
-		}
-
-		$order_by = [];
-		foreach ( array_filter( $this->query['order_by'] ) as $order ) {
-			$order_by[] = $order['column'] . ' ' . $order['order'];
-		}
-
-		$sql = "SELECT {$this->query['select']} FROM {$this->query['table']}";
-		$sql .= " WHERE " . join( ' AND ', $where );
-		$sql .= " ORDER BY " . implode( ", ", $order_by );
-		if ( $this->query['limit'] > 0 ) {
-			$sql .= " LIMIT " . intval( $this->query['limit'] );
-		}
-		if ( $this->query['offset'] >= 0 ) {
-			$sql .= " OFFSET " . intval( $this->query['offset'] );
-		}
-
-		return $sql;
 	}
 
 	/**
@@ -390,18 +419,44 @@ class QueryBuilder {
 	public function doesntExist() {
 	}
 
-	public function select() {
+	public function select( array $columns = [ '*' ] ) {
 	}
 
 	public function distinct() {
 	}
 
-	public function join( string $reference_table, string $reference_column, string $table_column, string $type = 'INNER' ) {
+	/**
+	 * Add joint table
+	 *
+	 * @param string $table
+	 * @param string $first_column
+	 * @param string $second_column
+	 * @param string $type
+	 *
+	 * @return static
+	 */
+	public function join( string $table, string $first_column, string $second_column, string $type = 'INNER' ) {
+		$type       = in_array( strtoupper( $type ), [ 'LEFT', 'RIGHT', 'INNER' ] ) ? $type : 'INNER';
+		$tableName  = $this->get_table_name( $table );
+		$table_info = static::get_table_info( $tableName[0] );
+		if ( ! empty( $table_info ) ) {
+			$this->query['join'][] = [
+				'table'         => $tableName[0],
+				'table_alias'   => $tableName[1],
+				'first_column'  => $first_column,
+				'second_column' => $second_column,
+				'type'          => strtoupper( $type ),
+			];
+		}
+
+		return $this;
 	}
 
-	public function leftJoin() {
+	public function leftJoin( string $table, string $first_column, string $second_column ) {
+		return $this->join( $table, $first_column, $second_column, 'LEFT' );
 	}
 
-	public function rightJoin() {
+	public function rightJoin( string $table, string $first_column, string $second_column ) {
+		return $this->join( $table, $first_column, $second_column, 'RIGHT' );
 	}
 }
