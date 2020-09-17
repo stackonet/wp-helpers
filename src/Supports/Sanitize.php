@@ -68,7 +68,6 @@ class Sanitize {
 
 	/**
 	 * Sanitizes a string
-	 *
 	 * - Checks for invalid UTF-8,
 	 * - Converts single `<` characters to entities
 	 * - Strips all tags
@@ -85,7 +84,6 @@ class Sanitize {
 
 	/**
 	 * Sanitizes a multiline string
-	 *
 	 * The function is like sanitize_text_field(), but preserves
 	 * new lines (\n) and other whitespace, which are legitimate
 	 * input in textarea elements.
@@ -141,6 +139,7 @@ class Sanitize {
 
 	/**
 	 * Array of allowed html tags on short block
+	 *
 	 * @return array
 	 */
 	private static function allowed_html_tags_short_block() {
@@ -165,5 +164,31 @@ class Sanitize {
 		);
 
 		return $allowed_tags;
+	}
+
+	/**
+	 * Sanitize mixed content
+	 *
+	 * @param mixed $value
+	 *
+	 * @return mixed
+	 */
+	public static function deep( $value ) {
+		if ( is_scalar( $value ) ) {
+			if ( is_numeric( $value ) ) {
+				return is_float( $value ) ? static::float( $value ) : static::int( $value );
+			}
+
+			return static::text( $value );
+		}
+
+		$sanitized_value = [];
+		if ( is_array( $value ) ) {
+			foreach ( $value as $index => $item ) {
+				$sanitized_value[ $index ] = static::deep( $item );
+			}
+		}
+
+		return $sanitized_value;
 	}
 }
