@@ -65,11 +65,17 @@ class QueryBuilder {
 			$order_by[] = $order['column'] . ' ' . $order['order'];
 		}
 
-		$sql = "SELECT {$this->query['select']} FROM {$this->query['table']}";
+		if ( $this->query['table_alias'] ) {
+			$table = "{$this->query['table']} AS {$this->query['table_alias']}";
+		} else {
+			$table = $this->query['table'];
+		}
+
+		$sql = "SELECT {$this->query['select']} FROM {$table}";
 		if ( count( $this->query['join'] ) ) {
 			foreach ( $this->query['join'] as $join ) {
 				$_alias = ! empty( $join['table_alias'] ) ? "AS {$join['table_alias']}" : "";
-				$sql    .= " {$join['type']} {$join['table']} {$_alias} ON {$join['first_column']} = {$join['second_column']}";
+				$sql    .= " {$join['type']} JOIN {$join['table']} {$_alias} ON {$join['first_column']} = {$join['second_column']}";
 			}
 		}
 		$sql .= " WHERE " . join( ' AND ', $where );
@@ -103,8 +109,11 @@ class QueryBuilder {
 	 * @return array
 	 */
 	private function sanitize_where_args( array $args ): array {
-		$column = $args[0];
-		$value  = $args[1];
+		list( $column, $table, $column_info ) = $this->get_column_name( $args[0] );
+		if ( empty( $column_info ) ) {
+			return [];
+		}
+		$value = $args[1];
 
 		if ( isset( $args[2] ) && in_array( $args[2], $this->get_compare_operators() ) ) {
 			$compare = $args[2];
@@ -112,11 +121,6 @@ class QueryBuilder {
 			$compare = is_array( $value ) ? 'IN' : '=';
 		}
 
-		$table_info = static::get_table_info( $this->query['table'] );
-		if ( ! isset( $table_info[ $column ] ) ) {
-			return [];
-		}
-		$column_info = $table_info[ $column ];
 		$data_format = $column_info['data_format'];
 
 		if ( $data_format == '%d' ) {
@@ -131,6 +135,7 @@ class QueryBuilder {
 		}
 
 		return [
+			'table'             => $table,
 			'column'            => $column,
 			'compare'           => $compare,
 			'type'              => $type,
@@ -219,20 +224,42 @@ class QueryBuilder {
 	 * @return string[]
 	 */
 	public function get_column_name( string $column ) {
-		$_column = $table = $alias = '';
 		if ( strpos( $column, '.' ) !== false ) {
-			$data    = explode( '.', $column );
-			$table   = trim( $data[0] );
-			$_column = trim( $data[2] );
+			$data        = explode( '.', $column );
+			$column_name = trim( $data[1] );
+		} else {
+			$column_name = $column;
 		}
 
-		if ( strpos( strtolower( $_column ), 'as' ) !== false ) {
-			$data2   = explode( ' ', $_column );
-			$_column = trim( $data2[0] );
-			$alias   = trim( $data2[2] );
+		if ( strpos( strtolower( $column_name ), 'as' ) !== false ) {
+			$data2       = explode( ' ', $column_name );
+			$column_name = trim( $data2[0] );
 		}
 
-		return [ $_column, $alias, $table ];
+		$table_name = '';
+		if ( array_key_exists( $column_name, static::get_table_info( $this->query['table'] ) ) ) {
+			$table_name = $this->query['table'];
+		}
+
+		if ( count( $this->query['join'] ) ) {
+			foreach ( $this->query['join'] as $join ) {
+				if ( ! empty( $table_name ) ) {
+					continue;
+				}
+				if ( array_key_exists( $column_name, static::get_table_info( $join['table'] ) ) ) {
+					$table_name = $join['table'];
+				}
+			}
+		}
+
+		if ( ! empty( $table_name ) ) {
+			$table_info  = static::get_table_info( $table_name );
+			$column_info = $table_info[ $column_name ];
+		} else {
+			$column_info = [];
+		}
+
+		return [ $column_name, $table_name, $column_info ];
 	}
 
 	/**
