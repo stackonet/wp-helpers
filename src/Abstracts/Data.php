@@ -22,6 +22,24 @@ class Data implements ArrayAccess, JsonSerializable {
 	protected $data = [];
 
 	/**
+	 * Data has been changed from initial state
+	 *
+	 * @var bool
+	 */
+	protected $dirty = false;
+
+	/**
+	 * Data constructor.
+	 *
+	 * @param array $data
+	 */
+	public function __construct( $data = [] ) {
+		if ( is_array( $data ) ) {
+			$this->set_data( $data );
+		}
+	}
+
+	/**
 	 * String representation of the class
 	 *
 	 * @return string
@@ -80,6 +98,8 @@ class Data implements ArrayAccess, JsonSerializable {
 	 */
 	public function set( string $key, $value ) {
 		$this->data[ $key ] = $value;
+
+		$this->dirty = true;
 	}
 
 	/**
@@ -111,6 +131,25 @@ class Data implements ArrayAccess, JsonSerializable {
 	public function remove( string $key ) {
 		if ( $this->has( $key ) ) {
 			unset( $this->data[ $key ] );
+
+			$this->dirty = true;
+		}
+	}
+
+	/**
+	 * Set data
+	 *
+	 * @param array $data
+	 */
+	public function set_data( array $data ) {
+		foreach ( $data as $key => $value ) {
+			if ( is_numeric( $value ) ) {
+				$value = is_float( $value ) ? (float) $value : (int) $value;
+			}
+			if ( is_serialized( $value ) ) {
+				$value = @unserialize( $value );
+			}
+			$this->data[ $key ] = $value;
 		}
 	}
 
