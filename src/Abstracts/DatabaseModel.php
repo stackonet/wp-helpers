@@ -709,6 +709,22 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
+	 * Get foreign key constant name
+	 *
+	 * @param string $table1
+	 * @param string $table2
+	 *
+	 * @return string
+	 */
+	public function get_foreign_key_constant_name( string $table1, string $table2 ): string {
+		global $wpdb;
+		$t1 = str_replace( $wpdb->prefix, '', $table1 );
+		$t2 = str_replace( $wpdb->prefix, '', $table2 );
+
+		return substr( sprintf( "fk_%s__%s", $t1, $t2 ), 0, 64 );
+	}
+
+	/**
 	 * Format item for database
 	 *
 	 * @param array $data User provided data
