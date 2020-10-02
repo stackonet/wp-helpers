@@ -12,9 +12,9 @@ class FormBuilder {
 	/**
 	 * Settings fields
 	 *
-	 * @param array $fields
+	 * @param array  $fields
 	 * @param string $option_name
-	 * @param array $values
+	 * @param array  $values
 	 *
 	 * @return string
 	 */
@@ -52,7 +52,7 @@ class FormBuilder {
 	/**
 	 * text input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -66,7 +66,7 @@ class FormBuilder {
 	/**
 	 * email input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -80,7 +80,7 @@ class FormBuilder {
 	/**
 	 * password input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -94,7 +94,7 @@ class FormBuilder {
 	/**
 	 * number input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -108,7 +108,7 @@ class FormBuilder {
 	/**
 	 * url input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -122,7 +122,7 @@ class FormBuilder {
 	/**
 	 * color input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -139,7 +139,7 @@ class FormBuilder {
 	/**
 	 * date input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -155,7 +155,7 @@ class FormBuilder {
 	/**
 	 * date input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -169,7 +169,7 @@ class FormBuilder {
 	/**
 	 * textarea input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -190,7 +190,7 @@ class FormBuilder {
 	/**
 	 * checkbox input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -213,9 +213,9 @@ class FormBuilder {
 	/**
 	 * multi checkbox input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
-	 * @param array $value
+	 * @param array  $value
 	 *
 	 * @return string
 	 */
@@ -236,7 +236,7 @@ class FormBuilder {
 	/**
 	 * radio input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -258,7 +258,7 @@ class FormBuilder {
 	/**
 	 * select input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -324,7 +324,7 @@ class FormBuilder {
 	/**
 	 * wp_editor input field
 	 *
-	 * @param array $field
+	 * @param array  $field
 	 * @param string $name
 	 * @param string $value
 	 *
@@ -343,5 +343,22 @@ class FormBuilder {
 		echo "</div>";
 
 		return ob_get_clean();
+	}
+
+	/**
+	 * Get html field
+	 *
+	 * @param array  $field
+	 * @param string $name
+	 * @param string $value
+	 *
+	 * @return mixed
+	 */
+	public function html( $field, $name, $value ) {
+		if ( isset( $field['html'] ) ) {
+			return $field['html'];
+		}
+
+		return '';
 	}
 }
