@@ -9,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Interface DataStoreInterface
+ *
  * @package Stackonet\WP\Framework\Interfaces
  */
 interface DataStoreInterface extends ArrayAccess, JsonSerializable {
@@ -52,7 +53,9 @@ interface DataStoreInterface extends ArrayAccess, JsonSerializable {
 	/**
 	 * Count total records from the database
 	 *
+	 * @param array $args
+	 *
 	 * @return array
 	 */
-	public function count_records();
+	public function count_records( array $args = [] );
 }

@@ -76,7 +76,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * @return array
 	 */
 	public function to_array() {
-		return $this->data;
+		return $this->get_data();
 	}
 
 	/**
@@ -154,6 +154,15 @@ class Data implements ArrayAccess, JsonSerializable {
 	}
 
 	/**
+	 * Get data
+	 *
+	 * @return array
+	 */
+	public function get_data(): array {
+		return $this->data;
+	}
+
+	/**
 	 * Whether a offset exists
 	 *
 	 * @param mixed $offset An offset to check for.
@@ -201,8 +210,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	/**
 	 * Specify data which should be serialized to JSON
 	 *
-	 * @return mixed data which can be serialized by json_encode
-	 * which is a value of any type other than a resource.
+	 * @return array data which can be serialized by json_encode
 	 */
 	public function jsonSerialize() {
 		return $this->to_array();

@@ -12,15 +12,43 @@ class QueryBuilder {
 	 * @var array
 	 */
 	protected $query = [
-		'table'       => '',
-		'table_alias' => '',
-		'select'      => '*',
-		'limit'       => - 1,
-		'offset'      => 0,
-		'order_by'    => [],
-		'join'        => [],
-		'where'       => [],
+		'mode'         => 'SELECT',
+		'table'        => '',
+		'table_alias'  => '',
+		'select'       => [ '*' ],
+		'limit'        => - 1,
+		'offset'       => 0,
+		'random_order' => false,
+		'order_by'     => [],
+		'join'         => [],
+		'where'        => [],
+		'group_by'     => [],
 	];
+
+	/**
+	 * QueryBuilder start time
+	 *
+	 * @var float
+	 */
+	private $start_time;
+
+	protected function __construct() {
+		$this->start_time = microtime( true );
+	}
+
+	public function __debugInfo() {
+		$data = [
+			'sql' => $this->get_query_sql(),
+		];
+
+		foreach ( $this->query as $key => $value ) {
+			$data[ $key ] = $value;
+		}
+
+		$data['tte_in_microseconds'] = microtime( true ) - $this->start_time;
+
+		return $data;
+	}
 
 	/**
 	 * Dump data for debug
@@ -71,20 +99,41 @@ class QueryBuilder {
 			$table = $this->query['table'];
 		}
 
-		$sql = "SELECT {$this->query['select']} FROM {$table}";
+		$sql = "";
+		if ( 'DELETE' == $this->query['mode'] ) {
+			$sql .= "DELETE FROM {$table}";
+		} else {
+			$select = implode( ', ', $this->query['select'] );
+			$sql    .= "SELECT {$select} FROM {$table}";
+		}
+
 		if ( count( $this->query['join'] ) ) {
 			foreach ( $this->query['join'] as $join ) {
 				$_alias = ! empty( $join['table_alias'] ) ? "AS {$join['table_alias']}" : "";
 				$sql    .= " {$join['type']} JOIN {$join['table']} {$_alias} ON {$join['first_column']} = {$join['second_column']}";
 			}
 		}
-		$sql .= " WHERE " . join( ' AND ', $where );
-		$sql .= " ORDER BY " . implode( ", ", $order_by );
-		if ( $this->query['limit'] > 0 ) {
-			$sql .= " LIMIT " . intval( $this->query['limit'] );
+
+		if ( $where ) {
+			$sql .= " WHERE " . join( ' AND ', $where );
 		}
-		if ( $this->query['offset'] >= 0 ) {
-			$sql .= " OFFSET " . intval( $this->query['offset'] );
+
+		if ( 'SELECT' == $this->query['mode'] ) {
+			if ( $this->query['group_by'] ) {
+				$sql .= " GROUP BY " . implode( ", ", $this->query['group_by'] );
+			}
+			if ( $order_by ) {
+				$sql .= " ORDER BY " . implode( ", ", $order_by );
+			} elseif ( $this->query['random_order'] ) {
+				$sql .= " ORDER BY RAND()";
+			}
+			if ( $this->query['limit'] > 0 ) {
+				$sql .= " LIMIT " . intval( $this->query['limit'] );
+
+				if ( $this->query['offset'] >= 0 ) {
+					$sql .= " OFFSET " . intval( $this->query['offset'] );
+				}
+			}
 		}
 
 		return $sql;
@@ -95,7 +144,7 @@ class QueryBuilder {
 	 *
 	 * @return string[]
 	 */
-	public function get_compare_operators(): array {
+	private function get_compare_operators(): array {
 		return [ '=', '!=', '>', '>=', '<', '<=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN' ];
 	}
 
@@ -183,7 +232,7 @@ class QueryBuilder {
 				}
 			}
 		} else {
-			if ( is_null( $value ) || 'NULL' == $value ) {
+			if ( is_null( $value ) || 'NULL' === $value ) {
 				$sql = "{$item['column']} IS NULL";
 			} elseif ( 'NOT NULL' == strtoupper( $value ) ) {
 				$sql = "{$item['column']} IS NOT NULL";
@@ -219,11 +268,12 @@ class QueryBuilder {
 	/**
 	 * Get column name
 	 *
-	 * @param string $column
+	 * @param string      $column
+	 * @param string|null $table_name
 	 *
 	 * @return string[]
 	 */
-	public function get_column_name( string $column ) {
+	public function get_column_name( string $column, ?string $table_name = null ) {
 		if ( strpos( $column, '.' ) !== false ) {
 			$data        = explode( '.', $column );
 			$column_name = trim( $data[1] );
@@ -236,18 +286,20 @@ class QueryBuilder {
 			$column_name = trim( $data2[0] );
 		}
 
-		$table_name = '';
-		if ( array_key_exists( $column_name, static::get_table_info( $this->query['table'] ) ) ) {
-			$table_name = $this->query['table'];
-		}
+		if ( empty( $table_name ) ) {
+			$table_name = '';
+			if ( array_key_exists( $column_name, static::get_table_info( $this->query['table'] ) ) ) {
+				$table_name = $this->query['table'];
+			}
 
-		if ( count( $this->query['join'] ) ) {
-			foreach ( $this->query['join'] as $join ) {
-				if ( ! empty( $table_name ) ) {
-					continue;
-				}
-				if ( array_key_exists( $column_name, static::get_table_info( $join['table'] ) ) ) {
-					$table_name = $join['table'];
+			if ( count( $this->query['join'] ) ) {
+				foreach ( $this->query['join'] as $join ) {
+					if ( ! empty( $table_name ) ) {
+						continue;
+					}
+					if ( array_key_exists( $column_name, static::get_table_info( $join['table'] ) ) ) {
+						$table_name = $join['table'];
+					}
 				}
 			}
 		}
@@ -308,6 +360,17 @@ class QueryBuilder {
 	}
 
 	/**
+	 * Get record in random order
+	 *
+	 * @return static
+	 */
+	public function in_random_order() {
+		$this->query['random_order'] = true;
+
+		return $this;
+	}
+
+	/**
 	 * Set offset
 	 *
 	 * @param int $offset
@@ -352,6 +415,26 @@ class QueryBuilder {
 	}
 
 	/**
+	 * Set group by parameters
+	 *
+	 * @param string|string[] $group_by
+	 *
+	 * @return $this
+	 */
+	public function group_by( $group_by ) {
+		if ( is_string( $group_by ) ) {
+			$this->query['group_by'][] = $group_by;
+		}
+		if ( is_array( $group_by ) ) {
+			foreach ( $group_by as $item ) {
+				$this->query['group_by'][] = $item;
+			}
+		}
+
+		return $this;
+	}
+
+	/**
 	 * Build where query
 	 * Example users
 	 * =================================================
@@ -389,67 +472,86 @@ class QueryBuilder {
 		return $this;
 	}
 
-	public function orWhere() {
-	}
-
-	public function whereBetween() {
-	}
-
-	public function whereIn( string $column, array $data ) {
-	}
-
-	public function whereNotIn( string $column, array $data ) {
-	}
-
-	public function orWhereIn( string $column, array $data ) {
-	}
-
-	public function orWhereNotIn( string $column, array $data ) {
-	}
-
-	public function whereNull( string $column ) {
-	}
-
-	public function orWhereNull( string $column ) {
-	}
-
+	/**
+	 * Get collection of records
+	 *
+	 * @return array
+	 */
 	public function get() {
+		$this->query['mode'] = 'SELECT';
+
+		global $wpdb;
+		$result = $wpdb->get_results( $this->get_query_sql(), ARRAY_A );
+
+		return is_array( $result ) ? $result : [];
 	}
 
 	/**
 	 * Get a single row
+	 *
+	 * @return array|null
 	 */
 	public function first() {
+		$this->query['mode'] = 'SELECT';
+
+		global $wpdb;
+		$result = $wpdb->get_row( $this->get_query_sql(), ARRAY_A );
+
+		return is_array( $result ) ? $result : null;
 	}
 
-	public function value() {
+	/**
+	 * Find a record by primary key value
+	 *
+	 * @param int|string $value
+	 *
+	 * @return array|null
+	 */
+	public function find( $value ) {
+		$column = static::get_primary_key( $this->query['table'] );
+		$this->where( $column, $value );
+
+		return $this->first();
 	}
 
-	public function find() {
+	/**
+	 * @param string|null $as
+	 *
+	 * @return int|array
+	 */
+	public function count( ?string $as = null ) {
+		if ( empty( $as ) ) {
+			$as = '__count';
+		}
+		$this->select( 'COUNT(*) AS ' . esc_sql( $as ) );
+
+		if ( $this->query['group_by'] ) {
+			return $this->get();
+		}
+
+		$counts = $this->first();
+
+		return isset( $counts[ $as ] ) ? intval( $counts[ $as ] ) : 0;
 	}
 
-	public function pluck() {
-	}
+	/**
+	 * Set columns to select
+	 *
+	 * @param string[]|string $columns
+	 *
+	 * @return $this
+	 */
+	public function select( $columns = [ '*' ] ) {
+		if ( is_string( $columns ) ) {
+			$columns = [ $columns ];
+		}
+		if ( is_array( $columns ) ) {
+			foreach ( $columns as $column ) {
+				$this->query['select'][] = $column;
+			}
+		}
 
-	public function count() {
-	}
-
-	public function max() {
-	}
-
-	public function avg() {
-	}
-
-	public function exists() {
-	}
-
-	public function doesntExist() {
-	}
-
-	public function select( array $columns = [ '*' ] ) {
-	}
-
-	public function distinct() {
+		return $this;
 	}
 
 	/**
@@ -463,13 +565,13 @@ class QueryBuilder {
 	 * @return static
 	 */
 	public function join( string $table, string $first_column, string $second_column, string $type = 'INNER' ) {
-		$type       = in_array( strtoupper( $type ), [ 'LEFT', 'RIGHT', 'INNER' ] ) ? $type : 'INNER';
-		$tableName  = $this->get_table_name( $table );
-		$table_info = static::get_table_info( $tableName[0] );
+		$type = in_array( strtoupper( $type ), [ 'LEFT', 'RIGHT', 'INNER' ] ) ? $type : 'INNER';
+		list( $table_name, $table_alias ) = $this->get_table_name( $table );
+		$table_info = static::get_table_info( $table_name );
 		if ( ! empty( $table_info ) ) {
 			$this->query['join'][] = [
-				'table'         => $tableName[0],
-				'table_alias'   => $tableName[1],
+				'table'         => $table_name,
+				'table_alias'   => $table_alias,
 				'first_column'  => $first_column,
 				'second_column' => $second_column,
 				'type'          => strtoupper( $type ),
@@ -477,13 +579,5 @@ class QueryBuilder {
 		}
 
 		return $this;
-	}
-
-	public function leftJoin( string $table, string $first_column, string $second_column ) {
-		return $this->join( $table, $first_column, $second_column, 'LEFT' );
-	}
-
-	public function rightJoin( string $table, string $first_column, string $second_column ) {
-		return $this->join( $table, $first_column, $second_column, 'RIGHT' );
 	}
 }

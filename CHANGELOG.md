@@ -1,3 +1,11 @@
+#### 1.1.9
+* Update PostTypeModel class.
+* Add QueryBuilder class (alpha).
+* Add method to sanitize deep mixed content.
+* Update Data class to set initial data.
+* Add new method to get foreign key constant name.
+* Add FormBuilder method to generate html field.
+
 #### 1.1.8
 * Update Data class to make compatible with array_column function.
 * Add Cacheable trait for handling caching functionality.
