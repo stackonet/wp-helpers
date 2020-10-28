@@ -203,7 +203,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @param array $data
 	 *
-	 * @return bool
+	 * @return int[]
 	 */
 	public function create_multiple( array $data ) {
 		global $wpdb;
@@ -211,6 +211,13 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$current_time  = current_time( 'mysql' );
 		$columns_names = static::get_columns_names( $table );
 		$default       = static::get_default_data( $table );
+		$primary_key   = static::get_primary_key( $table );
+
+		$last_row    = $wpdb->get_row(
+			"SELECT {$primary_key} FROM {$table} ORDER BY {$primary_key} DESC LIMIT 1;",
+			ARRAY_A
+		);
+		$last_row_id = isset( $last_row[ $primary_key ] ) ? intval( $last_row[ $primary_key ] ) : 0;
 
 		$values = [];
 		foreach ( $data as $index => $item ) {
@@ -238,7 +245,19 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		// Update cache change
 		$this->set_cache_last_changed();
 
-		return (bool) $query;
+		$ids = [];
+		if ( $query ) {
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT {$primary_key} FROM {$table} WHERE {$primary_key} > %s ORDER BY {$primary_key} ASC;",
+					$last_row_id
+				),
+				ARRAY_A
+			);
+			$ids     = array_map( 'intval', wp_list_pluck( $results, $primary_key ) );
+		}
+
+		return $ids;
 	}
 
 	/**
@@ -727,8 +746,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Format item for database
 	 *
-	 * @param array $data User provided data
-	 * @param array $default_data Default data. Previous data for existing record
+	 * @param array       $data         User provided data
+	 * @param array       $default_data Default data. Previous data for existing record
 	 * @param string|null $current_time Current datetime
 	 *
 	 * @return array

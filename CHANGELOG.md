@@ -1,3 +1,6 @@
+#### 1.1.10
+* Update DatabaseModal::create_multiple() method to return newly created records ids.
+
 #### 1.1.9
 * Update PostTypeModel class.
 * Add QueryBuilder class (alpha).

@@ -49,13 +49,4 @@ interface DataStoreInterface extends ArrayAccess, JsonSerializable {
 	 * @return bool
 	 */
 	public function delete( $data = null );
-
-	/**
-	 * Count total records from the database
-	 *
-	 * @param array $args
-	 *
-	 * @return array
-	 */
-	public function count_records( array $args = [] );
 }
