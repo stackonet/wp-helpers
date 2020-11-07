@@ -69,11 +69,11 @@ trait Cacheable {
 	/**
 	 * Get cache key for single item
 	 *
-	 * @param int $id
+	 * @param int|string $id
 	 *
 	 * @return string
 	 */
-	public function get_cache_key_for_single_item( int $id ): string {
+	public function get_cache_key_for_single_item( $id ): string {
 		$prefix = $this->get_cache_prefix();
 
 		return "$prefix:$id";
