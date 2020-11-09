@@ -4,6 +4,7 @@ namespace Stackonet\WP\Framework\Abstracts;
 
 use ArrayObject;
 use JsonSerializable;
+use Stackonet\WP\Framework\Supports\Sanitize;
 use Stackonet\WP\Framework\Supports\Validate;
 use WP_Error;
 use WP_Post;
@@ -13,12 +14,14 @@ defined( 'ABSPATH' ) || exit;
 
 abstract class PostTypeModel implements JsonSerializable {
 
+	const POST_TYPE = 'post';
+
 	/**
 	 * Post type
 	 *
 	 * @var string
 	 */
-	protected static $post_type = 'post';
+	protected static $post_type;
 
 	/**
 	 * WP_Post object
@@ -63,10 +66,31 @@ abstract class PostTypeModel implements JsonSerializable {
 	public function __construct( $post = null ) {
 		$post = get_post( $post );
 
+		if ( static::POST_TYPE ) {
+			static::$post_type = static::POST_TYPE;
+		}
+
 		if ( $post->post_type == static::$post_type ) {
 			$this->post = $post;
 			$this->read_meta_data();
 		}
+	}
+
+	/**
+	 * Get WP_Post
+	 * @return WP_Post|null
+	 */
+	public function get_post() {
+		return $this->post;
+	}
+
+	/**
+	 * Check if Post type is valid
+	 *
+	 * @return bool
+	 */
+	public function is_valid() {
+		return $this->get_post() instanceof WP_Post;
 	}
 
 	/**
@@ -164,7 +188,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * Get meta data
 	 *
 	 * @param string $key
-	 * @param mixed  $default
+	 * @param mixed $default
 	 *
 	 * @return mixed
 	 */
@@ -191,7 +215,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Get image data
 	 *
-	 * @param int    $image_id
+	 * @param int $image_id
 	 * @param string $size
 	 *
 	 * @return array|ArrayObject
@@ -318,7 +342,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * @param string $menu_name
 	 * @param string $name
 	 * @param string $singular_name
-	 * @param array  $args
+	 * @param array $args
 	 *
 	 * @return array
 	 */
@@ -388,8 +412,8 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * Save meta data
 	 *
 	 * @param WP_Post|int $post
-	 * @param string      $source
-	 * @param array       $values
+	 * @param string $source
+	 * @param array $values
 	 */
 	public static function save_meta_data( $post, $source = 'admin-ui', array $values = [] ) {
 		$post = get_post( $post );
@@ -406,7 +430,7 @@ abstract class PostTypeModel implements JsonSerializable {
 			'meta_key'          => '',
 			'post_key'          => '',
 			'rest_param'        => '',
-			'sanitize_callback' => 'sanitize_text_field'
+			'sanitize_callback' => [ Sanitize::class, 'deep' ]
 		];
 
 		foreach ( static::$meta_fields as $meta_field ) {
