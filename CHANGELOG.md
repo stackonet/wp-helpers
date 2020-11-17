@@ -1,3 +1,8 @@
+#### 1.1.11
+* Fix type casting error for Cacheable trait.
+* Update PostTypeModel class.
+* Fix composer version check error.
+
 #### 1.1.10
 * Update DatabaseModal::create_multiple() method to return newly created records ids.
 
