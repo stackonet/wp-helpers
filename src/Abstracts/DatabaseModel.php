@@ -208,7 +208,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	public function create_multiple( array $data ) {
 		global $wpdb;
 		$table         = $this->get_table_name();
-		$current_time  = current_time( 'mysql' );
+		$current_time  = current_time( 'mysql', true );
 		$columns_names = static::get_columns_names( $table );
 		$default       = static::get_default_data( $table );
 		$primary_key   = static::get_primary_key( $table );
@@ -271,7 +271,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table        = $this->get_table_name();
 		$id           = isset( $data[ $this->primaryKey ] ) ? intval( $data[ $this->primaryKey ] ) : 0;
-		$current_time = current_time( 'mysql' );
+		$current_time = current_time( 'mysql', true );
 
 		$item = $this->find_by_id( $id );
 		if ( empty( $item ) ) {
@@ -334,7 +334,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 
 		global $wpdb;
 		$table         = $this->get_table_name();
-		$current_time  = current_time( 'mysql' );
+		$current_time  = current_time( 'mysql', true );
 		$columns_names = static::get_columns_names( $table );
 
 		$values = [];
@@ -435,7 +435,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	public function trash( $id ) {
 		global $wpdb;
 		$table = $this->get_table_name();
-		$query = $wpdb->update( $table, [ $this->deleted_at => current_time( 'mysql' ) ],
+		$query = $wpdb->update( $table, [ $this->deleted_at => current_time( 'mysql', true ) ],
 			[ $this->primaryKey => $id ]
 		);
 
@@ -456,7 +456,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		global $wpdb;
 		$table = $this->get_table_name();
 		$ids   = array_map( 'absint', $ids );
-		$sql   = $wpdb->prepare( "UPDATE `{$table}` SET `{$this->deleted_at}` = %s", current_time( 'mysql' ) );
+		$sql   = $wpdb->prepare( "UPDATE `{$table}` SET `{$this->deleted_at}` = %s", current_time( 'mysql', true ) );
 		$sql   .= " WHERE {$this->primaryKey} IN(" . implode( ',', $ids ) . ")";
 
 		$query = $wpdb->query( $sql );
@@ -746,15 +746,15 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Format item for database
 	 *
-	 * @param array       $data         User provided data
-	 * @param array       $default_data Default data. Previous data for existing record
+	 * @param array $data User provided data
+	 * @param array $default_data Default data. Previous data for existing record
 	 * @param string|null $current_time Current datetime
 	 *
 	 * @return array
 	 */
 	protected function format_item_for_db( array $data, array $default_data, $current_time = null ) {
 		if ( empty( $current_time ) ) {
-			$current_time = $current_time = current_time( 'mysql' );
+			$current_time = current_time( 'mysql', true );
 		}
 
 		$mode = ! empty( $data[ $this->primaryKey ] ) ? 'update' : 'create';

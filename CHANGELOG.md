@@ -1,5 +1,7 @@
+#### 1.1.12
+* Timezone has been set to UTC for creating all database record.
+
 #### 1.1.11
-* Fix type casting error for Cacheable trait.
 * Update PostTypeModel class.
 * Fix composer version check error.
 
