@@ -95,6 +95,34 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$this->primaryKeyType = static::get_primary_key_data_format( $this->get_table_name() );
 	}
 
+	public function find( $args = [] ) {
+		return $this->find_multiple( $args );
+	}
+
+	public function find_by_id( $id ) {
+		return $this->find_single( $id );
+	}
+
+	/**
+	 * @param array $data
+	 *
+	 * @return int[]
+	 * @see DatabaseModel::batch_create();
+	 */
+	public function create_multiple( array $data ) {
+		return $this->batch_create( $data );
+	}
+
+	/**
+	 * @param array $data
+	 *
+	 * @return bool
+	 * @see DatabaseModel::batch_update();
+	 */
+	public function update_multiple( array $data ) {
+		return $this->batch_update( $data );
+	}
+
 	/**
 	 * Find multiple records from database
 	 *
@@ -102,7 +130,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return array
 	 */
-	public function find( $args = [] ) {
+	public function find_multiple( $args = [] ) {
 		global $wpdb;
 		$table = $this->get_table_name();
 
@@ -156,11 +184,11 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	/**
 	 * Find record by id
 	 *
-	 * @param int $id
+	 * @param int|string $id
 	 *
 	 * @return array|self
 	 */
-	public function find_by_id( $id ) {
+	public function find_single( $id ) {
 		global $wpdb;
 		$table = $this->get_table_name();
 
@@ -184,7 +212,10 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return int
 	 */
-	public function create( array $data ) {
+	public function create( array $data = [] ) {
+		if ( empty( $data ) ) {
+			$data = $this->data;
+		}
 		global $wpdb;
 		$table = $this->get_table_name();
 
@@ -205,7 +236,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return int[]
 	 */
-	public function create_multiple( array $data ) {
+	public function batch_create( array $data ) {
 		global $wpdb;
 		$table         = $this->get_table_name();
 		$current_time  = current_time( 'mysql', true );
@@ -267,7 +298,10 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return bool
 	 */
-	public function update( array $data ) {
+	public function update( array $data = [] ) {
+		if ( empty( $data ) ) {
+			$data = $this->data;
+		}
 		global $wpdb;
 		$table        = $this->get_table_name();
 		$id           = isset( $data[ $this->primaryKey ] ) ? intval( $data[ $this->primaryKey ] ) : 0;
@@ -324,7 +358,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @return bool
 	 */
-	public function update_multiple( array $data ) {
+	public function batch_update( array $data ) {
 		$ids           = wp_list_pluck( $data, $this->primaryKey );
 		$default       = $this->find( [ $this->primaryKey . '__in' => $ids, 'per_page' => count( $ids ) ] );
 		$default_items = [];
@@ -795,5 +829,24 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$_format = static::get_data_format_for_db( $this->get_table_name(), $_data );
 
 		return array( $_data, $_format );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function batch( string $action, array $data ) {
+		$method = 'batch_' . $action;
+		if ( method_exists( $this, $method ) ) {
+			return $this->{$method}( $data );
+		}
+
+		return new \WP_Error( 'no_batch_found', 'No batch action found.' );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function count_records( array $args = [] ) {
+		return [];
 	}
 }
