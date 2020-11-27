@@ -32,6 +32,21 @@ class ApiController extends WP_REST_Controller {
 	protected $namespace = 'stackonet/v1';
 
 	/**
+	 * Decode HTML entity
+	 * WordPress encode html entity when saving on database.
+	 * Convert then back to character before sending data
+	 *
+	 * @param mixed $value
+	 *
+	 * @return mixed
+	 */
+	protected function html_entity_decode( $value ) {
+		return is_string( $value ) ?
+			html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, get_option( 'blog_charset', 'UTF-8' ) ) :
+			$value;
+	}
+
+	/**
 	 * Get HTTP status code.
 	 *
 	 * @return integer
@@ -47,7 +62,7 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @return ApiController
 	 */
-	public function setStatusCode( $statusCode ) {
+	public function setStatusCode( int $statusCode ) {
 		$this->statusCode = $statusCode;
 
 		return $this;
@@ -56,22 +71,26 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * Respond.
 	 *
-	 * @param mixed $data    Response data. Default null.
-	 * @param int   $status  Optional. HTTP status code. Default 200.
+	 * @param mixed $data Response data. Default null.
+	 * @param int $status Optional. HTTP status code. Default 200.
 	 * @param array $headers Optional. HTTP header map. Default empty array.
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respond( $data = null, $status = 200, $headers = array() ) {
+		if ( is_array( $data ) && ( isset( $data['data'] ) && is_array( $data['data'] ) ) ) {
+			$data['data'] = map_deep( $data['data'], [ $this, 'html_entity_decode' ] );
+		}
+
 		return new WP_REST_Response( $data, $status, $headers );
 	}
 
 	/**
 	 * Response error message
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|array|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -101,9 +120,9 @@ class ApiController extends WP_REST_Controller {
 	/**
 	 * Response success message
 	 *
-	 * @param mixed  $data
-	 * @param string $message
-	 * @param array  $headers
+	 * @param mixed $data
+	 * @param string|null $message
+	 * @param array $headers
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -134,8 +153,8 @@ class ApiController extends WP_REST_Controller {
 	 * --> bulk creation
 	 * --> bulk update
 	 *
-	 * @param mixed  $data
-	 * @param string $message
+	 * @param mixed $data
+	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -148,8 +167,8 @@ class ApiController extends WP_REST_Controller {
 	 * The request has succeeded and a new resource has been created as a result of it.
 	 * This is typically the response sent after a POST request, or after some PUT requests.
 	 *
-	 * @param mixed  $data
-	 * @param string $message
+	 * @param mixed $data
+	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -167,8 +186,8 @@ class ApiController extends WP_REST_Controller {
 	 * --> batch processing
 	 * --> delete data that is NOT immediate
 	 *
-	 * @param mixed  $data
-	 * @param string $message
+	 * @param mixed $data
+	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -182,8 +201,8 @@ class ApiController extends WP_REST_Controller {
 	 * Use cases:
 	 * --> deletion succeeded
 	 *
-	 * @param mixed  $data
-	 * @param string $message
+	 * @param mixed $data
+	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -198,9 +217,9 @@ class ApiController extends WP_REST_Controller {
 	 * --> invalid/incomplete request
 	 * --> return multiple client errors at once
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -212,9 +231,9 @@ class ApiController extends WP_REST_Controller {
 	 * 401 (Unauthorized)
 	 * The request requires user authentication.
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -234,9 +253,9 @@ class ApiController extends WP_REST_Controller {
 	 * 403 (Forbidden)
 	 * The client is authenticated but not authorized to perform the action.
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -258,9 +277,9 @@ class ApiController extends WP_REST_Controller {
 	 * the resource itself does not exist. Servers may also send this response instead of 403 to hide
 	 * the existence of a resource from an unauthorized client.
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -280,9 +299,9 @@ class ApiController extends WP_REST_Controller {
 	 * 422 (Unprocessable Entity)
 	 * The request was well-formed but was unable to be followed due to semantic errors.
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -306,9 +325,9 @@ class ApiController extends WP_REST_Controller {
 	 * 500 (Internal Server Error)
 	 * The server has encountered a situation it doesn't know how to handle.
 	 *
-	 * @param string $code
-	 * @param string $message
-	 * @param mixed  $data
+	 * @param string|null $code
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -328,13 +347,13 @@ class ApiController extends WP_REST_Controller {
 	 * Format date for REST Response
 	 *
 	 * @param string|int|DateTime $date
-	 * @param string              $type
+	 * @param string $type
 	 *
 	 * @return DateTime|int|string
 	 * @throws Exception
 	 */
 	public static function formatDate( $date, $type = 'iso' ) {
-		_deprecated_function( __FUNCTION__, '1.1.8', static::class . '::format_date()' );
+		_deprecated_function( __FUNCTION__, '1.1.8', __CLASS__ . '::format_date()' );
 
 		if ( ! $date instanceof DateTime ) {
 			$date = new DateTime( $date );
@@ -416,8 +435,11 @@ class ApiController extends WP_REST_Controller {
 	 *
 	 * @return array
 	 */
-	public static function sanitize_sorting_data( ?string $sort = null ) {
+	public static function sanitize_sorting_data( $sort = null ) {
 		$sort_array = [];
+		if ( ! ( is_string( $sort ) && ! empty( $sort ) ) ) {
+			return $sort_array;
+		}
 		$sort_items = explode( ',', $sort );
 		foreach ( $sort_items as $item ) {
 			if ( strpos( $item, '+' ) == false ) {
@@ -440,8 +462,8 @@ class ApiController extends WP_REST_Controller {
 	 */
 	public function get_collection_params() {
 		return [
-			'context'         => $this->get_context_param(),
-			'page'            => [
+			'context'  => $this->get_context_param(),
+			'page'     => [
 				'description'       => __( 'Current page of the collection.' ),
 				'type'              => 'integer',
 				'default'           => 1,
@@ -449,7 +471,7 @@ class ApiController extends WP_REST_Controller {
 				'validate_callback' => 'rest_validate_request_arg',
 				'minimum'           => 1,
 			],
-			'per_page'        => [
+			'per_page' => [
 				'description'       => __( 'Maximum number of items to be returned in result set.' ),
 				'type'              => 'integer',
 				'default'           => 10,
@@ -458,17 +480,17 @@ class ApiController extends WP_REST_Controller {
 				'sanitize_callback' => 'absint',
 				'validate_callback' => 'rest_validate_request_arg',
 			],
-			'search'          => [
+			'search'   => [
 				'description'       => __( 'Limit results to those matching a string.' ),
 				'type'              => 'string',
 				'sanitize_callback' => 'sanitize_text_field',
 				'validate_callback' => 'rest_validate_request_arg',
 			],
-			'sort'            => [
-				'type' => 'string',
+			'sort'     => [
+				'description'       => __( 'Sorting order. Example: title+DESC,author+ASC' ),
+				'type'              => 'string',
+				'sanitize_callback' => [ $this, 'sanitize_sorting_data' ],
 			],
-			'_fields'         => [],
-			'_fields_exclude' => [],
 		];
 	}
 }
