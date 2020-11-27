@@ -21,18 +21,11 @@ abstract class DefaultController extends ApiController {
 	abstract public function get_store();
 
 	/**
-	 * Get route name
-	 *
-	 * @return string
-	 */
-	abstract public function get_rest_base(): string;
-
-	/**
 	 * Registers the routes for the objects of the controller.
 	 */
 	public function register_routes() {
-		$route = trim( $this->get_rest_base(), '/' );
-		register_rest_route( $this->namespace, $route, [
+		$rest_base = trim( $this->rest_base, '/' );
+		register_rest_route( $this->namespace, $rest_base, [
 			[
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => [ $this, 'get_items' ],
@@ -46,7 +39,7 @@ abstract class DefaultController extends ApiController {
 			],
 		] );
 
-		register_rest_route( $this->namespace, $route . '/(?P<id>\d+)', [
+		register_rest_route( $this->namespace, $rest_base . '/(?P<id>\d+)', [
 			'args' => [
 				'id' => [
 					'description'       => __( 'Item unique id.' ),
@@ -73,7 +66,41 @@ abstract class DefaultController extends ApiController {
 			],
 		] );
 
-		register_rest_route( $this->namespace, $route . '/batch', [
+		register_rest_route( $this->namespace, $rest_base . '/(?P<id>\d+)/trash', [
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'trash_item' ],
+				'permission_callback' => [ $this, 'update_item_permissions_check' ],
+				'args'                => [
+					'id' => [
+						'description'       => __( 'Item unique id.' ),
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+						'validate_callback' => 'rest_validate_request_arg',
+						'minimum'           => 1,
+					]
+				],
+			],
+		] );
+
+		register_rest_route( $this->namespace, $rest_base . '/(?P<id>\d+)/restore', [
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'restore_item' ],
+				'permission_callback' => [ $this, 'update_item_permissions_check' ],
+				'args'                => [
+					'id' => [
+						'description'       => __( 'Item unique id.' ),
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+						'validate_callback' => 'rest_validate_request_arg',
+						'minimum'           => 1,
+					]
+				],
+			],
+		] );
+
+		register_rest_route( $this->namespace, $rest_base . '/batch', [
 			[
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => [ $this, 'batch_operation' ],
@@ -201,6 +228,60 @@ abstract class DefaultController extends ApiController {
 	}
 
 	/**
+	 * Trash item
+	 *
+	 * @param WP_REST_Request $request
+	 *
+	 * @return WP_REST_Response
+	 */
+	public function trash_item( $request ) {
+		$permission = $this->update_item_permissions_check( $request );
+		if ( is_wp_error( $permission ) ) {
+			return $this->respondUnauthorized();
+		}
+
+		$id   = (int) $request->get_param( 'id' );
+		$item = $this->get_store()->find_single( $id );
+		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
+			return $this->respondNotFound( null, 'No item found.' );
+		}
+
+		if ( $this->get_store()->trash( $id ) ) {
+			return $this->respondOK();
+		}
+
+		return $this->respondInternalServerError();
+	}
+
+	/**
+	 * Restore item
+	 *
+	 * @param WP_REST_Request $request
+	 *
+	 * @return WP_REST_Response
+	 */
+	public function restore_item( $request ) {
+		$permission = $this->update_item_permissions_check( $request );
+		if ( is_wp_error( $permission ) ) {
+			return $this->respondUnauthorized();
+		}
+
+		$id   = (int) $request->get_param( 'id' );
+		$item = $this->get_store()->find_single( $id );
+		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
+			return $this->respondNotFound( null, 'No item found.' );
+		}
+
+		if ( $this->get_store()->restore( $id ) ) {
+			return $this->respondOK();
+		}
+
+		return $this->respondInternalServerError();
+	}
+
+	/**
+	 * Batch operation
+	 *
 	 * @param WP_REST_Request $request
 	 *
 	 * @return WP_REST_Response

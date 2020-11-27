@@ -1,3 +1,8 @@
+#### 1.2.0
+* Add class`DefaultController` for handling REST crud operation.
+* Update `DataStoreInterface` interface class
+* Update `PostTypeModel` class
+
 #### 1.1.12
 * Timezone has been set to UTC for creating all database record.
 

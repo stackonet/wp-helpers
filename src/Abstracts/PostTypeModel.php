@@ -17,13 +17,6 @@ abstract class PostTypeModel implements JsonSerializable {
 	const POST_TYPE = 'post';
 
 	/**
-	 * Post type
-	 *
-	 * @var string
-	 */
-	protected static $post_type;
-
-	/**
 	 * WP_Post object
 	 *
 	 * @var WP_Post
@@ -66,11 +59,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	public function __construct( $post = null ) {
 		$post = get_post( $post );
 
-		if ( static::POST_TYPE ) {
-			static::$post_type = static::POST_TYPE;
-		}
-
-		if ( $post->post_type == static::$post_type ) {
+		if ( $post->post_type == static::POST_TYPE ) {
 			$this->post = $post;
 			$this->read_meta_data();
 		}
@@ -172,7 +161,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * @return string
 	 */
 	public function get_created_at() {
-		return $this->post->post_date;
+		return $this->post->post_date_gmt;
 	}
 
 	/**
@@ -181,7 +170,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * @return string
 	 */
 	public function get_updated_at() {
-		return $this->post->post_modified;
+		return $this->post->post_modified_gmt;
 	}
 
 	/**
@@ -253,7 +242,7 @@ abstract class PostTypeModel implements JsonSerializable {
 			'orderby'        => 'date',
 		) );
 
-		$args['post_type'] = static::$post_type;
+		$args['post_type'] = static::POST_TYPE;
 
 		return new WP_Query( $args );
 	}
@@ -285,7 +274,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
 	 */
 	public static function create( array $data ) {
-		$data['post_type'] = static::$post_type;
+		$data['post_type'] = static::POST_TYPE;
 
 		return wp_insert_post( $data );
 	}
@@ -298,7 +287,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
 	 */
 	public static function update( array $data ) {
-		$data['post_type'] = static::$post_type;
+		$data['post_type'] = static::POST_TYPE;
 
 		return wp_update_post( $data );
 	}
@@ -418,7 +407,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	public static function save_meta_data( $post, $source = 'admin-ui', array $values = [] ) {
 		$post = get_post( $post );
 
-		if ( $post->post_type != static::$post_type ) {
+		if ( $post->post_type != static::POST_TYPE ) {
 			return;
 		}
 

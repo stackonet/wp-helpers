@@ -95,15 +95,32 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 		$this->primaryKeyType = static::get_primary_key_data_format( $this->get_table_name() );
 	}
 
+	/**
+	 * Find multiple items
+	 *
+	 * @param array $args
+	 *
+	 * @return array
+	 */
 	public function find( $args = [] ) {
 		return $this->find_multiple( $args );
 	}
 
+	/**
+	 * Find by primary key value
+	 *
+	 * @param int|string $id
+	 *
+	 * @return array|static
+	 * @see DatabaseModel::batch_update();
+	 */
 	public function find_by_id( $id ) {
 		return $this->find_single( $id );
 	}
 
 	/**
+	 * Update batch items
+	 *
 	 * @param array $data
 	 *
 	 * @return int[]
@@ -114,6 +131,8 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	}
 
 	/**
+	 * Update batch items
+	 *
 	 * @param array $data
 	 *
 	 * @return bool
@@ -847,6 +866,6 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 * @inheritDoc
 	 */
 	public function count_records( array $args = [] ) {
-		return [];
+		return 0;
 	}
 }
