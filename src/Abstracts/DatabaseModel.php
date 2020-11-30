@@ -2,6 +2,7 @@
 
 namespace Stackonet\WP\Framework\Abstracts;
 
+use ArrayObject;
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
 use Stackonet\WP\Framework\Traits\Cacheable;
 use Stackonet\WP\Framework\Traits\TableInfo;
@@ -147,7 +148,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @param array $args
 	 *
-	 * @return array
+	 * @return array|static[]
 	 */
 	public function find_multiple( $args = [] ) {
 		global $wpdb;
@@ -197,7 +198,12 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$this->set_cache( $cache_key, $items, DAY_IN_SECONDS );
 		}
 
-		return $items;
+		$data = [];
+		foreach ( $items as $item ) {
+			$data[] = new static( $item );
+		}
+
+		return $data;
 	}
 
 	/**
@@ -205,7 +211,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 *
 	 * @param int|string $id
 	 *
-	 * @return array|self
+	 * @return ArrayObject|static
 	 */
 	public function find_single( $id ) {
 		global $wpdb;
@@ -221,7 +227,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 			$this->set_cache( $cache_key, $item );
 		}
 
-		return $item;
+		return $item ? new static( $item ) : new ArrayObject();
 	}
 
 	/**
