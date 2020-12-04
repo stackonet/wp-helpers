@@ -29,7 +29,7 @@ class Sanitize {
 	 *
 	 * @return float
 	 */
-	public static function float( $value ) {
+	public static function float( $value ): float {
 		return floatval( $value );
 	}
 
@@ -40,7 +40,7 @@ class Sanitize {
 	 *
 	 * @return int
 	 */
-	public static function int( $value ) {
+	public static function int( $value ): int {
 		return intval( $value );
 	}
 
@@ -51,18 +51,18 @@ class Sanitize {
 	 *
 	 * @return string
 	 */
-	public static function email( $value ) {
+	public static function email( $value ): string {
 		return sanitize_email( $value );
 	}
 
 	/**
 	 * Sanitize url
 	 *
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public static function url( $value ) {
+	public static function url( $value ): string {
 		return esc_url_raw( trim( $value ) );
 	}
 
@@ -78,7 +78,7 @@ class Sanitize {
 	 *
 	 * @return string
 	 */
-	public static function text( $value ) {
+	public static function text( $value ): string {
 		return sanitize_text_field( $value );
 	}
 
@@ -92,7 +92,7 @@ class Sanitize {
 	 *
 	 * @return string
 	 */
-	public static function textarea( $value ) {
+	public static function textarea( $value ): string {
 		return sanitize_textarea_field( $value );
 	}
 
@@ -105,18 +105,18 @@ class Sanitize {
 	 *
 	 * @return boolean
 	 */
-	public static function checked( $value ) {
+	public static function checked( $value ): bool {
 		return in_array( $value, array( 'yes', 'on', '1', 1, true, 'true' ), true );
 	}
 
 	/**
 	 * Check if the given input is a valid date.
 	 *
-	 * @param string $value
+	 * @param mixed $value
 	 *
-	 * @return boolean
+	 * @return string
 	 */
-	public static function date( $value ) {
+	public static function date( $value ): string {
 		$time = strtotime( $value );
 
 		if ( $time ) {
@@ -133,8 +133,8 @@ class Sanitize {
 	 *
 	 * @return string
 	 */
-	public static function html( $value ) {
-		return wp_kses( $value, self::allowed_html_tags_short_block() );
+	public static function html( $value ): string {
+		return wp_kses( $value, static::allowed_html_tags_short_block() );
 	}
 
 	/**
@@ -142,28 +142,26 @@ class Sanitize {
 	 *
 	 * @return array
 	 */
-	private static function allowed_html_tags_short_block() {
-		$allowed_tags = array(
-			'div'    => array( 'class' => array(), 'id' => array(), ),
-			'span'   => array( 'class' => array(), 'id' => array(), ),
-			'ol'     => array( 'class' => array(), 'id' => array(), ),
-			'ul'     => array( 'class' => array(), 'id' => array(), ),
-			'li'     => array( 'class' => array(), 'id' => array(), ),
-			'p'      => array( 'class' => array(), 'id' => array(), ),
-			'a'      => array(
-				'href'   => array(),
-				'class'  => array(),
-				'id'     => array(),
-				'rel'    => array(),
-				'title'  => array(),
-				'target' => array(),
-			),
-			'br'     => array(),
-			'em'     => array(),
-			'strong' => array(),
-		);
-
-		return $allowed_tags;
+	private static function allowed_html_tags_short_block(): array {
+		return [
+			'div'    => [ 'class' => [], 'id' => [], ],
+			'span'   => [ 'class' => [], 'id' => [], ],
+			'ol'     => [ 'class' => [], 'id' => [], ],
+			'ul'     => [ 'class' => [], 'id' => [], ],
+			'li'     => [ 'class' => [], 'id' => [], ],
+			'p'      => [ 'class' => [], 'id' => [], ],
+			'a'      => [
+				'href'   => [],
+				'class'  => [],
+				'id'     => [],
+				'rel'    => [],
+				'title'  => [],
+				'target' => [],
+			],
+			'br'     => [],
+			'em'     => [],
+			'strong' => [],
+		];
 	}
 
 	/**
@@ -174,6 +172,9 @@ class Sanitize {
 	 * @return mixed
 	 */
 	public static function deep( $value ) {
+		if ( is_null( $value ) || empty( $value ) ) {
+			return $value;
+		}
 		if ( is_scalar( $value ) ) {
 			if ( is_numeric( $value ) ) {
 				return is_float( $value ) ? static::float( $value ) : static::int( $value );

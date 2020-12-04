@@ -352,7 +352,7 @@ abstract class DefaultController extends ApiController {
 	 *
 	 * @param WP_REST_Request $request
 	 *
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
 	public function batch_operation_permissions_check( $request ) {
 		if ( ! current_user_can( 'read' ) ) {
