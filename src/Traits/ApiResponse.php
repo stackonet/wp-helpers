@@ -321,31 +321,4 @@ trait ApiResponse {
 
 		return $this->setStatusCode( 500 )->respondWithError( $code, $message, $data );
 	}
-
-	/**
-	 * Check if current user is an admin
-	 *
-	 * @return bool
-	 */
-	public function is_admin(): bool {
-		return current_user_can( 'manage_options' );
-	}
-
-	/**
-	 * Check if current user is an editor
-	 *
-	 * @return bool
-	 */
-	public function is_editor(): bool {
-		return current_user_can( 'edit_pages' );
-	}
-
-	/**
-	 * Check if current user is logged in
-	 *
-	 * @return bool
-	 */
-	public function is_logged_in(): bool {
-		return current_user_can( 'read' );
-	}
 }

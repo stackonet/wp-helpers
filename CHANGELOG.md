@@ -1,4 +1,9 @@
+#### 1.3.0
+
+* Add `ApiCrudOperations` trait to handle default crud operations.
+
 #### 1.2.1
+
 * Fix `Sanitize::deep()` method fail on null value.
 * Add `Filesystem` class to work with file system.
 

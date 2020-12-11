@@ -11,6 +11,6 @@ abstract class DefaultController extends ApiController {
 
 
 	public function __construct() {
-		_deprecated_function( __CLASS__, '2.1.0', ApiCrudOperations::class );
+		_deprecated_function( __CLASS__, '1.3.0', ApiCrudOperations::class );
 	}
 }

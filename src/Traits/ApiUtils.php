@@ -2,7 +2,55 @@
 
 namespace Stackonet\WP\Framework\Traits;
 
+use DateTime;
+use Exception;
+use Stackonet\WP\Framework\Supports\Logger;
+
 trait ApiUtils {
+
+	/**
+	 * Check if current user is an admin
+	 *
+	 * @return bool
+	 */
+	public function is_admin(): bool {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Check if current user is an editor
+	 *
+	 * @return bool
+	 */
+	public function is_editor(): bool {
+		return current_user_can( 'edit_pages' );
+	}
+
+	/**
+	 * Check if current user is logged in
+	 *
+	 * @return bool
+	 */
+	public function is_logged_in(): bool {
+		return current_user_can( 'read' );
+	}
+
+	/**
+	 * Format date for ISO8601 (Y-m-d\TH:i:s)
+	 *
+	 * @param string $date_string
+	 *
+	 * @return string
+	 */
+	public static function format_date( string $date_string = 'now' ): string {
+		try {
+			return ( new DateTime( $date_string ) )->format( 'Y-m-d\TH:i:s' );
+		} catch ( Exception $e ) {
+			Logger::log( $e );
+		}
+
+		return $date_string;
+	}
 
 	/**
 	 * Generate pagination metadata
@@ -62,7 +110,7 @@ trait ApiUtils {
 	 *
 	 * @return array Query parameters for the collection.
 	 */
-	public function get_collection_params() {
+	public function get_collection_params(): array {
 		return [
 			'page'     => [
 				'description'       => __( 'Current page of the collection.' ),
