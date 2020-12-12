@@ -2,6 +2,7 @@
 
 namespace Stackonet\WP\Framework\Traits;
 
+use WP_Error;
 use WP_REST_Response;
 
 trait ApiResponse {
@@ -52,8 +53,8 @@ trait ApiResponse {
 	/**
 	 * Respond.
 	 *
-	 * @param mixed $data Response data. Default null.
-	 * @param int $status Optional. HTTP status code. Default 200.
+	 * @param mixed $data    Response data. Default null.
+	 * @param int   $status  Optional. HTTP status code. Default 200.
 	 * @param array $headers Optional. HTTP header map. Default empty array.
 	 *
 	 * @return WP_REST_Response
@@ -66,18 +67,32 @@ trait ApiResponse {
 	 * Response error message
 	 *
 	 * @param string|array|null $code
-	 * @param string|null $message
-	 * @param mixed $data
+	 * @param string|null       $message
+	 * @param mixed             $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondWithError( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( 1 === func_num_args() && is_array( $code ) ) {
-			list( $code, $message, $data ) = array( null, null, $code );
+		if ( 1 === func_num_args() ) {
+			if ( $code instanceof WP_Error ) {
+				$message = $code->get_error_message();
+				if ( $code->has_errors() ) {
+					$error_data = $code->get_error_data();
+					if ( is_array( $error_data ) && isset( $error_data['status'] ) ) {
+						$status_code = is_numeric( $error_data['status'] ) ? intval( $error_data['status'] ) : 400;
+						unset( $error_data['status'] );
+						$data = count( $error_data ) ? $error_data : $data;
+					}
+				}
+				$this->setStatusCode( isset( $status_code ) ? $status_code : 400 );
+				$code = $code->get_error_code();
+			}
+			if ( is_array( $code ) ) {
+				list( $code, $message, $data ) = array( null, null, $code );
+			}
 		}
 
-		$status_code = $this->getStatusCode();
-		$response    = [ 'success' => false ];
+		$response = [ 'success' => false ];
 
 		if ( ! empty( $code ) && is_string( $code ) ) {
 			$response['code'] = $code;
@@ -91,15 +106,15 @@ trait ApiResponse {
 			$response['errors'] = $data;
 		}
 
-		return $this->respond( $response, $status_code );
+		return $this->respond( $response, $this->getStatusCode() );
 	}
 
 	/**
 	 * Response success message
 	 *
-	 * @param mixed $data
+	 * @param mixed       $data
 	 * @param string|null $message
-	 * @param array $headers
+	 * @param array       $headers
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -132,7 +147,7 @@ trait ApiResponse {
 	 * --> bulk creation
 	 * --> bulk update
 	 *
-	 * @param mixed $data
+	 * @param mixed       $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -146,7 +161,7 @@ trait ApiResponse {
 	 * The request has succeeded and a new resource has been created as a result of it.
 	 * This is typically the response sent after a POST request, or after some PUT requests.
 	 *
-	 * @param mixed $data
+	 * @param mixed       $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -165,7 +180,7 @@ trait ApiResponse {
 	 * --> batch processing
 	 * --> delete data that is NOT immediate
 	 *
-	 * @param mixed $data
+	 * @param mixed       $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -180,7 +195,7 @@ trait ApiResponse {
 	 * Use cases:
 	 * --> deletion succeeded
 	 *
-	 * @param mixed $data
+	 * @param mixed       $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -198,7 +213,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed $data
+	 * @param mixed       $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -212,7 +227,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed $data
+	 * @param mixed       $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -234,7 +249,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed $data
+	 * @param mixed       $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -258,7 +273,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed $data
+	 * @param mixed       $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -280,7 +295,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed $data
+	 * @param mixed       $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -306,7 +321,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed $data
+	 * @param mixed       $data
 	 *
 	 * @return WP_REST_Response
 	 */

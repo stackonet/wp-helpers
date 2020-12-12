@@ -8,6 +8,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Mailer
+ *
  * @package Stackonet\WP\Framework\Emails
  */
 class Mailer extends ActionEmailTemplate {
@@ -327,7 +328,7 @@ class Mailer extends ActionEmailTemplate {
 	 */
 	public function setMessage( $message ) {
 		if ( is_string( $message ) ) {
-			$this->message = wp_kses_post( $message );
+			$this->message = $message;
 		}
 
 		return $this;

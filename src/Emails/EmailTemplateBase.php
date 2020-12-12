@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class EmailTemplateBase
+ *
  * @package Stackonet\WP\Framework\Emails
  */
 class EmailTemplateBase {
@@ -81,7 +82,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_style( $key ) {
+	public function get_style( string $key ): string {
 		if ( 'font-family' == $key ) {
 			return $this->fontFamily;
 		}
@@ -94,7 +95,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_blogname() {
+	public function get_blogname(): string {
 		return wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
 	}
 
@@ -103,14 +104,16 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_home_url() {
+	public function get_home_url(): string {
 		return esc_url( home_url( '/' ) );
 	}
 
 	/**
 	 * Get default logo
+	 *
+	 * @return string
 	 */
-	public function get_default_logo() {
+	public function get_default_logo(): string {
 		$blog_name = $this->get_blogname();
 
 		// Get logo image from WooCommerce email settings if available
@@ -137,7 +140,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_logo() {
+	public function get_logo(): string {
 		if ( ! empty( $this->logo ) ) {
 			return '<img src="' . $this->logo . '" alt="' . $this->get_blogname() . '"/>';
 		}
@@ -148,7 +151,7 @@ class EmailTemplateBase {
 	/**
 	 * Get logo html
 	 */
-	public function get_logo_html() {
+	public function get_logo_html(): string {
 		return sprintf( "<a style='%s' target='_blank' href='%s'>%s</a>",
 			$this->fontFamily . $this->style['email-masthead_name'],
 			$this->get_home_url(),
@@ -161,9 +164,9 @@ class EmailTemplateBase {
 	 *
 	 * @param string $logo
 	 *
-	 * @return self
+	 * @return static
 	 */
-	public function set_logo( $logo ) {
+	public function set_logo( string $logo ): self {
 		if ( filter_var( $logo, FILTER_VALIDATE_URL ) ) {
 			$this->logo = $logo;
 		}
@@ -174,16 +177,16 @@ class EmailTemplateBase {
 	/**
 	 * @return bool
 	 */
-	public function is_box_mode() {
+	public function is_box_mode(): bool {
 		return $this->box_mode;
 	}
 
 	/**
 	 * @param bool $box_mode
 	 *
-	 * @return self
+	 * @return static
 	 */
-	public function set_box_mode( $box_mode ) {
+	public function set_box_mode( bool $box_mode ): self {
 		$this->box_mode = (bool) $box_mode;
 
 		return $this;
@@ -196,7 +199,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_unique_styles( $styles ) {
+	public function get_unique_styles( $styles ): string {
 		if ( is_string( $styles ) ) {
 			$styles = explode( ';', $styles );
 		}
@@ -223,7 +226,7 @@ class EmailTemplateBase {
 	/**
 	 * Get footer
 	 */
-	public function get_footer_html() {
+	public function get_footer_html(): string {
 		return sprintf( "<p style='%s'>%s</p>", $this->style['paragraph-sub'], $this->get_footer_text() );
 	}
 
@@ -232,7 +235,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_footer_text() {
+	public function get_footer_text(): string {
 		if ( ! empty( $this->footer_text ) ) {
 			return $this->footer_text;
 		}
@@ -249,7 +252,7 @@ class EmailTemplateBase {
 	 *
 	 * @return self
 	 */
-	public function set_footer_text( $footer_text ) {
+	public function set_footer_text( string $footer_text ): self {
 		$this->footer_text = $footer_text;
 
 		return $this;
@@ -263,7 +266,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function add_paragraph( $text, $style = '' ) {
+	public function add_paragraph( string $text, $style = '' ): string {
 		$style = $this->get_unique_styles( $this->get_style( 'paragraph' ) . $style );
 
 		return sprintf( "<p style='%s'>%s</p>", $style, $text ) . PHP_EOL;
@@ -276,7 +279,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function section_start( array $args = [] ) {
+	public function section_start( array $args = [] ): string {
 		$default       = [ 'content-width' => 600, 'section-style' => '', 'table-style' => '', 'cell-style' => '' ];
 		$styles        = wp_parse_args( $args, $default );
 		$width         = intval( $styles['content-width'] );
@@ -296,7 +299,7 @@ class EmailTemplateBase {
 	/**
 	 * Section end
 	 */
-	public function section_end() {
+	public function section_end(): string {
 		$html = '</td>';
 		$html .= '</tr>';
 		$html .= '</table>';
@@ -311,7 +314,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_email_head() {
+	public function get_email_head(): string {
 		$html = '<!DOCTYPE html>' . PHP_EOL;
 		$html .= '<html>' . PHP_EOL;
 		$html .= '<head>' . PHP_EOL;
@@ -346,7 +349,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function get_email_footer() {
+	public function get_email_footer(): string {
 		$html = '</table>' . PHP_EOL;
 		$html .= '</div>' . PHP_EOL;
 		$html .= '</td>' . PHP_EOL;
@@ -363,7 +366,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function before_content() {
+	public function before_content(): string {
 		$html = $this->get_email_head();
 
 		$html .= $this->section_start( [
@@ -387,7 +390,7 @@ class EmailTemplateBase {
 	 *
 	 * @return string
 	 */
-	public function after_content() {
+	public function after_content(): string {
 		$html = $this->section_end();
 
 		$html .= $this->section_start( [
