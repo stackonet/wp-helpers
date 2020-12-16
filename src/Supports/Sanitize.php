@@ -177,10 +177,15 @@ class Sanitize {
 		}
 		if ( is_scalar( $value ) ) {
 			if ( is_numeric( $value ) ) {
-				return is_float( $value ) ? static::float( $value ) : static::int( $value );
+				return is_float( $value ) ? floatval( $value ) : intval( $value );
 			}
 
-			return static::text( $value );
+			// Check if value contains HTML
+			if ( $value != strip_tags( $value ) ) {
+				return wp_kses_post( $value );
+			}
+
+			return sanitize_textarea_field( $value );
 		}
 
 		$sanitized_value = [];
