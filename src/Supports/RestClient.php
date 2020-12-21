@@ -8,6 +8,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Class RestClient
+ *
  * @package Stackonet\WP\Framework\Supports
  */
 class RestClient {
@@ -30,14 +31,14 @@ class RestClient {
 	 *
 	 * @var array
 	 */
-	protected $headers = array();
+	protected $headers = [];
 
 	/**
 	 * Additional request arguments
 	 *
 	 * @var array
 	 */
-	protected $request_args = array();
+	protected $request_args = [];
 
 	/**
 	 * Global parameters that should send on every request
@@ -47,7 +48,7 @@ class RestClient {
 	protected $global_parameters = [];
 
 	/**
-	 * RestClient constructor.
+	 * Class constructor.
 	 *
 	 * @param string $api_base_url
 	 */
@@ -69,11 +70,11 @@ class RestClient {
 	 * Add header
 	 *
 	 * @param string $key
-	 * @param mixed $value
+	 * @param mixed  $value
 	 *
 	 * @return self
 	 */
-	public function add_headers( $key, $value = null ) {
+	public function add_headers( string $key, $value = null ) {
 		if ( ! is_array( $key ) ) {
 			$this->headers[ $key ] = $value;
 
@@ -94,13 +95,13 @@ class RestClient {
 	 *
 	 * @return self
 	 */
-	public function add_auth_header( $credentials, $type = 'Basic' ) {
+	public function add_auth_header( string $credentials, string $type = 'Basic' ) {
 		return $this->add_headers( 'Authorization', $type . ' ' . $credentials );
 	}
 
 	/**
 	 * @param string $name
-	 * @param null $value
+	 * @param null   $value
 	 *
 	 * @return $this
 	 */
@@ -117,7 +118,7 @@ class RestClient {
 	 *
 	 * @return string
 	 */
-	public function get_api_endpoint( $endpoint ) {
+	public function get_api_endpoint( string $endpoint ): string {
 		return rtrim( $this->api_base_url, '/' ) . '/' . ltrim( $endpoint, '/' );
 	}
 
@@ -125,7 +126,7 @@ class RestClient {
 	 * Performs an HTTP GET request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param array $parameters
+	 * @param array  $parameters
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -137,7 +138,7 @@ class RestClient {
 	 * Performs an HTTP POST request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -149,7 +150,7 @@ class RestClient {
 	 * Performs an HTTP PUT request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param mixed $data
+	 * @param mixed  $data
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -161,7 +162,7 @@ class RestClient {
 	 * Performs an HTTP DELETE request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param mixed $parameters
+	 * @param mixed  $parameters
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -172,8 +173,8 @@ class RestClient {
 	/**
 	 * Performs an HTTP request and returns its response.
 	 *
-	 * @param string $method Request method. Support GET, POST, PUT, DELETE
-	 * @param string $endpoint
+	 * @param string            $method Request method. Support GET, POST, PUT, DELETE
+	 * @param string            $endpoint
 	 * @param null|string|array $request_body
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
@@ -186,11 +187,12 @@ class RestClient {
 			if ( in_array( $method, array( 'POST', 'PUT' ) ) ) {
 				$api_request_args['body'] = $request_body;
 			} else {
-				if ( count( $this->global_parameters ) ) {
-					$request_body = array_merge( $request_body, $this->get_global_parameters() );
-				}
 				$request_url = add_query_arg( $request_body, $request_url );
 			}
+		}
+
+		if ( count( $this->global_parameters ) ) {
+			$request_url = add_query_arg( $request_url, $this->get_global_parameters() );
 		}
 
 		$response = wp_remote_request( $request_url, $api_request_args );
@@ -216,9 +218,11 @@ class RestClient {
 	}
 
 	/**
+	 * Get global parameters
+	 *
 	 * @return array
 	 */
-	public function get_global_parameters() {
+	public function get_global_parameters(): array {
 		return $this->global_parameters;
 	}
 
@@ -226,11 +230,11 @@ class RestClient {
 	 * Set global parameter
 	 *
 	 * @param string $key
-	 * @param mixed $value
+	 * @param mixed  $value
 	 *
-	 * @return self
+	 * @return static
 	 */
-	public function set_global_parameter( $key, $value ) {
+	public function set_global_parameter( string $key, $value ) {
 		$this->global_parameters[ $key ] = $value;
 
 		return $this;
