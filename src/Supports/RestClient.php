@@ -70,7 +70,7 @@ class RestClient {
 	 * Add header
 	 *
 	 * @param string $key
-	 * @param mixed  $value
+	 * @param mixed $value
 	 *
 	 * @return self
 	 */
@@ -96,12 +96,12 @@ class RestClient {
 	 * @return self
 	 */
 	public function add_auth_header( string $credentials, string $type = 'Basic' ) {
-		return $this->add_headers( 'Authorization', $type . ' ' . $credentials );
+		return $this->add_headers( 'Authorization', sprintf( '%s %s', $type, $credentials ) );
 	}
 
 	/**
 	 * @param string $name
-	 * @param null   $value
+	 * @param null $value
 	 *
 	 * @return $this
 	 */
@@ -123,10 +123,33 @@ class RestClient {
 	}
 
 	/**
+	 * Get global parameters
+	 *
+	 * @return array
+	 */
+	public function get_global_parameters(): array {
+		return $this->global_parameters;
+	}
+
+	/**
+	 * Set global parameter
+	 *
+	 * @param string $key
+	 * @param mixed $value
+	 *
+	 * @return static
+	 */
+	public function set_global_parameter( string $key, $value ) {
+		$this->global_parameters[ $key ] = $value;
+
+		return $this;
+	}
+
+	/**
 	 * Performs an HTTP GET request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param array  $parameters
+	 * @param array $parameters
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -138,7 +161,7 @@ class RestClient {
 	 * Performs an HTTP POST request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param mixed  $data
+	 * @param mixed $data
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -150,7 +173,7 @@ class RestClient {
 	 * Performs an HTTP PUT request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param mixed  $data
+	 * @param mixed $data
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -162,7 +185,7 @@ class RestClient {
 	 * Performs an HTTP DELETE request and returns its response.
 	 *
 	 * @param string $endpoint
-	 * @param mixed  $parameters
+	 * @param mixed $parameters
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
 	 */
@@ -173,8 +196,8 @@ class RestClient {
 	/**
 	 * Performs an HTTP request and returns its response.
 	 *
-	 * @param string            $method Request method. Support GET, POST, PUT, DELETE
-	 * @param string            $endpoint
+	 * @param string $method Request method. Support GET, POST, PUT, DELETE
+	 * @param string $endpoint
 	 * @param null|string|array $request_body
 	 *
 	 * @return array|WP_Error The response array or a WP_Error on failure.
@@ -191,13 +214,18 @@ class RestClient {
 			}
 		}
 
-		if ( count( $this->global_parameters ) ) {
-			$request_url = add_query_arg( $request_url, $this->get_global_parameters() );
+		// Add global parameters if any
+		if ( count( $this->get_global_parameters() ) ) {
+			$request_url = add_query_arg( $this->get_global_parameters(), $request_url );
 		}
 
 		$response = wp_remote_request( $request_url, $api_request_args );
 
+		$debug_info = [ 'request_url' => $request_url, 'request_args' => $api_request_args ];
+
 		if ( is_wp_error( $response ) ) {
+			$response->add_data( $debug_info, 'debug_info' );
+
 			return $response;
 		}
 
@@ -205,38 +233,21 @@ class RestClient {
 		$response_body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( ! is_array( $response_body ) ) {
-			return new WP_Error( 'unexpected_response_type', 'Rest Client Error: unexpected response type' );
+			$response = new WP_Error( 'unexpected_response_type', 'Rest Client Error: unexpected response type' );
+			$response->add_data( $debug_info, 'debug_info' );
+
+			return $response;
 		}
 
 		if ( ! ( $response_code >= 200 && $response_code < 300 ) ) {
 			$response_message = wp_remote_retrieve_response_message( $response );
 
-			return new WP_Error( 'rest_error', $response_message, $response_body );
+			$response = new WP_Error( 'rest_error', $response_message, $response_body );
+			$response->add_data( $debug_info, 'debug_info' );
+
+			return $response;
 		}
 
 		return $response_body;
-	}
-
-	/**
-	 * Get global parameters
-	 *
-	 * @return array
-	 */
-	public function get_global_parameters(): array {
-		return $this->global_parameters;
-	}
-
-	/**
-	 * Set global parameter
-	 *
-	 * @param string $key
-	 * @param mixed  $value
-	 *
-	 * @return static
-	 */
-	public function set_global_parameter( string $key, $value ) {
-		$this->global_parameters[ $key ] = $value;
-
-		return $this;
 	}
 }

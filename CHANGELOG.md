@@ -1,5 +1,9 @@
+#### 1.3.2
+
+* Fix global parameters issue on `RestClient` class
+
 #### 1.3.1
-* Fix `Sanitize::deep()` method is removing all html tags.
+
 * Update `ApiResponse::respondWithError()` method to accept `WP_Error` class.
 * Update `RestClient` class.
 
