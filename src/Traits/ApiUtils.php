@@ -61,7 +61,7 @@ trait ApiUtils {
 	 *
 	 * @return array
 	 */
-	public static function get_pagination_data( $total_items = 0, $per_page = 20, $current_page = 1 ) {
+	public static function get_pagination_data( $total_items = 0, $per_page = 20, $current_page = 1 ): array {
 		$current_page = max( intval( $current_page ), 1 );
 		$per_page     = max( intval( $per_page ), 1 );
 		$total_items  = intval( $total_items );
@@ -85,7 +85,7 @@ trait ApiUtils {
 	 *
 	 * @return array
 	 */
-	public static function sanitize_sorting_data( $sort = null ) {
+	public static function sanitize_sorting_data( $sort = null ): array {
 		$sort_array = [];
 		if ( ! ( is_string( $sort ) && ! empty( $sort ) ) ) {
 			return $sort_array;

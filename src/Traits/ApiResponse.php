@@ -6,12 +6,12 @@ use WP_Error;
 use WP_REST_Response;
 
 trait ApiResponse {
-	/**
-	 * HTTP status code.
-	 *
-	 * @var int
-	 */
+
 	protected $statusCode = 200;
+	protected $errorCode = null;
+	protected $message = null;
+	protected $data = null;
+	protected $headers = [];
 
 	/**
 	 * Decode HTML entity
@@ -51,70 +51,286 @@ trait ApiResponse {
 	}
 
 	/**
+	 * If it has error code
+	 *
+	 * @return bool
+	 */
+	public function has_error_code(): bool {
+		return ! empty( $this->get_error_code() );
+	}
+
+	/**
+	 * Get error code
+	 *
+	 * @return string
+	 */
+	public function get_error_code(): string {
+		if ( is_string( $this->errorCode ) && ! empty( $this->errorCode ) ) {
+			return $this->errorCode;
+		}
+		$default = $this->get_default_error_message();
+
+		return $default['code'] ?? '';
+	}
+
+	/**
+	 * Set error code
+	 *
+	 * @param string|null $errorCode
+	 */
+	public function set_error_code( $errorCode ) {
+		if ( is_string( $errorCode ) && ! empty( $errorCode ) ) {
+			$this->errorCode = $errorCode;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * If it has a message
+	 *
+	 * @return bool
+	 */
+	public function has_message(): bool {
+		return ! empty( $this->get_message() );
+	}
+
+	/**
+	 * Get message
+	 *
+	 * @return string
+	 */
+	public function get_message(): string {
+		if ( is_string( $this->message ) && ! empty( $this->message ) ) {
+			return $this->message;
+		}
+		$default = $this->get_default_error_message();
+
+		return $default['message'] ?? '';
+	}
+
+	/**
+	 * Set message
+	 *
+	 * @param string|null $message
+	 */
+	public function set_message( $message ) {
+		if ( is_string( $message ) && ! empty( $message ) ) {
+			$this->message = $message;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * If it has data
+	 *
+	 * @return bool
+	 */
+	public function has_data(): bool {
+		return ! empty( $this->data );
+	}
+
+	/**
+	 * Get data
+	 *
+	 * @return mixed
+	 */
+	public function get_data() {
+		return $this->data;
+	}
+
+	/**
+	 * Set data
+	 *
+	 * @param mixed $data
+	 */
+	public function set_data( $data ) {
+		if ( ! empty( $data ) ) {
+			$this->data = $data;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Get additional response headers
+	 *
+	 * @return array
+	 */
+	public function get_headers(): array {
+		return $this->headers;
+	}
+
+	/**
+	 * Set additional response header
+	 *
+	 * @param array $headers
+	 *
+	 * @return static
+	 */
+	public function set_headers( array $headers ) {
+		foreach ( $headers as $key => $value ) {
+			$this->headers[ $key ] = $value;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Check if it is a success response
+	 *
+	 * @return bool
+	 */
+	public function is_success_response(): bool {
+		return ( $this->getStatusCode() >= 200 && $this->getStatusCode() < 300 );
+	}
+
+	/**
+	 * Get default error message
+	 *
+	 * @return array
+	 */
+	protected function get_default_error_message(): array {
+		$messages = [
+			401 => [
+				'code'    => 'rest_forbidden_context',
+				'message' => 'Sorry, you are not allowed to access this resource.'
+			],
+			403 => [
+				'code'    => 'rest_forbidden_context',
+				'message' => 'Sorry, you are not allowed to access this resource.'
+			],
+			404 => [
+				'code'    => 'rest_no_item_found',
+				'message' => 'Sorry, no item found for your request.'
+			],
+			422 => [
+				'code'    => 'rest_invalid_data_type',
+				'message' => 'One or more fields has an error. Fix and try again.'
+			],
+			500 => [
+				'code'    => 'rest_server_error',
+				'message' => 'Sorry, something went wrong.'
+			],
+		];
+
+		return $messages[ $this->getStatusCode() ] ?? [ 'code' => null, 'message' => null ];
+	}
+
+	/**
+	 * Get formatted response
+	 *
+	 * @return array
+	 */
+	protected function get_formatted_response(): array {
+		$response = [
+			'success' => $this->is_success_response()
+		];
+
+		if ( $this->has_error_code() ) {
+			$response['code'] = $this->get_error_code();
+		}
+
+		if ( $this->has_message() ) {
+			$response['message'] = $this->get_message();
+		}
+
+		if ( $this->has_data() ) {
+			if ( ! $this->is_success_response() ) {
+				$response['errors'] = $this->get_data();
+			} else {
+				$response['data'] = is_array( $this->get_data() ) ?
+					map_deep( $this->get_data(), [ $this, 'html_entity_decode' ] ) :
+					$this->get_data();
+			}
+		}
+
+		return $response;
+	}
+
+	/**
 	 * Respond.
 	 *
-	 * @param mixed $data    Response data. Default null.
-	 * @param int   $status  Optional. HTTP status code. Default 200.
+	 * @param mixed $data Response data. Default null.
+	 * @param int $status Optional. HTTP status code. Default 200.
 	 * @param array $headers Optional. HTTP header map. Default empty array.
 	 *
 	 * @return WP_REST_Response
 	 */
-	public function respond( $data = null, $status = 200, $headers = array() ): WP_REST_Response {
+	public function respond( $data = null, $status = null, $headers = [] ): WP_REST_Response {
+		if ( empty( $data ) ) {
+			$data = $this->get_formatted_response();
+		}
+		if ( empty( $status ) ) {
+			$status = $this->getStatusCode();
+		}
+		if ( empty( $headers ) ) {
+			$headers = $this->get_headers();
+		}
+
 		return new WP_REST_Response( $data, $status, $headers );
+	}
+
+	/**
+	 * Response with WP_Error object
+	 *
+	 * @param WP_Error $error
+	 *
+	 * @return WP_REST_Response
+	 */
+	public function respondWithWpError( WP_Error $error ): WP_REST_Response {
+		$this->set_message( $error->get_error_message() );
+		$this->set_error_code( $error->get_error_code() );
+
+		$error_data = $error->has_errors() && is_array( $error->get_error_data() ) ? $error->get_error_data() : [];
+		if ( isset( $error_data['status'] ) ) {
+			$status_code = is_numeric( $error_data['status'] ) ? intval( $error_data['status'] ) : 400;
+			unset( $error_data['status'] );
+		}
+
+		if ( count( $error_data ) ) {
+			$this->set_data( $error_data );
+		}
+
+		$this->setStatusCode( $status_code ?? 400 );
+
+		return $this->respond();
 	}
 
 	/**
 	 * Response error message
 	 *
 	 * @param string|array|null $code
-	 * @param string|null       $message
-	 * @param mixed             $data
+	 * @param string|null $message
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondWithError( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( 1 === func_num_args() ) {
-			if ( $code instanceof WP_Error ) {
-				$message = $code->get_error_message();
-				if ( $code->has_errors() ) {
-					$error_data = $code->get_error_data();
-					if ( is_array( $error_data ) && isset( $error_data['status'] ) ) {
-						$status_code = is_numeric( $error_data['status'] ) ? intval( $error_data['status'] ) : 400;
-						unset( $error_data['status'] );
-						$data = count( $error_data ) ? $error_data : $data;
-					}
-				}
-				$this->setStatusCode( isset( $status_code ) ? $status_code : 400 );
-				$code = $code->get_error_code();
-			}
-			if ( is_array( $code ) ) {
-				list( $code, $message, $data ) = array( null, null, $code );
-			}
+		if ( $code instanceof WP_Error ) {
+			return $this->respondWithWpError( $code );
 		}
 
-		$response = [ 'success' => false ];
+		if ( 1 === func_num_args() && is_array( $code ) ) {
+			$this->set_data( $code );
 
-		if ( ! empty( $code ) && is_string( $code ) ) {
-			$response['code'] = $code;
+			return $this->respond();
 		}
 
-		if ( ! empty( $message ) && is_string( $message ) ) {
-			$response['message'] = $message;
-		}
+		$this->set_error_code( $code );
+		$this->set_message( $message );
+		$this->set_data( $data );
 
-		if ( ! empty( $data ) ) {
-			$response['errors'] = $data;
-		}
-
-		return $this->respond( $response, $this->getStatusCode() );
+		return $this->respond();
 	}
 
 	/**
 	 * Response success message
 	 *
-	 * @param mixed       $data
+	 * @param mixed $data
 	 * @param string|null $message
-	 * @param array       $headers
+	 * @param array $headers
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -123,20 +339,11 @@ trait ApiResponse {
 			list( $data, $message ) = array( null, $data );
 		}
 
-		$code     = $this->getStatusCode();
-		$response = [ 'success' => true ];
+		$this->set_data( $data );
+		$this->set_message( $message );
+		$this->set_headers( $headers );
 
-		if ( ! empty( $message ) ) {
-			$response['message'] = $message;
-		}
-
-		if ( ! empty( $data ) ) {
-			$response['data'] = map_deep( $data, function ( $value ) {
-				return $this->html_entity_decode( $value );
-			} );
-		}
-
-		return $this->respond( $response, $code, $headers );
+		return $this->respond();
 	}
 
 	/**
@@ -147,7 +354,7 @@ trait ApiResponse {
 	 * --> bulk creation
 	 * --> bulk update
 	 *
-	 * @param mixed       $data
+	 * @param mixed $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -161,7 +368,7 @@ trait ApiResponse {
 	 * The request has succeeded and a new resource has been created as a result of it.
 	 * This is typically the response sent after a POST request, or after some PUT requests.
 	 *
-	 * @param mixed       $data
+	 * @param mixed $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -180,7 +387,7 @@ trait ApiResponse {
 	 * --> batch processing
 	 * --> delete data that is NOT immediate
 	 *
-	 * @param mixed       $data
+	 * @param mixed $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -195,7 +402,7 @@ trait ApiResponse {
 	 * Use cases:
 	 * --> deletion succeeded
 	 *
-	 * @param mixed       $data
+	 * @param mixed $data
 	 * @param string|null $message
 	 *
 	 * @return WP_REST_Response
@@ -213,7 +420,7 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed       $data
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -227,19 +434,11 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed       $data
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondUnauthorized( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( empty( $code ) ) {
-			$code = 'rest_forbidden_context';
-		}
-
-		if ( empty( $message ) ) {
-			$message = 'Sorry, you are not allowed to access this resource.';
-		}
-
 		return $this->setStatusCode( 401 )->respondWithError( $code, $message, $data );
 	}
 
@@ -249,19 +448,11 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed       $data
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondForbidden( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( empty( $code ) ) {
-			$code = 'rest_forbidden_context';
-		}
-
-		if ( empty( $message ) ) {
-			$message = 'Sorry, you are not allowed to access this resource.';
-		}
-
 		return $this->setStatusCode( 403 )->respondWithError( $code, $message, $data );
 	}
 
@@ -273,19 +464,11 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed       $data
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondNotFound( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( empty( $code ) ) {
-			$code = 'rest_no_item_found';
-		}
-
-		if ( empty( $message ) ) {
-			$message = 'Sorry, no resource found for your request.';
-		}
-
 		return $this->setStatusCode( 404 )->respondWithError( $code, $message, $data );
 	}
 
@@ -295,23 +478,11 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed       $data
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondUnprocessableEntity( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( 1 === func_num_args() && is_array( $code ) ) {
-			list( $code, $message, $data ) = array( null, null, $code );
-		}
-
-		if ( empty( $code ) ) {
-			$code = 'rest_invalid_data_type';
-		}
-
-		if ( empty( $message ) ) {
-			$message = 'One or more fields has an error. Fix and try again.';
-		}
-
 		return $this->setStatusCode( 422 )->respondWithError( $code, $message, $data );
 	}
 
@@ -321,19 +492,11 @@ trait ApiResponse {
 	 *
 	 * @param string|null $code
 	 * @param string|null $message
-	 * @param mixed       $data
+	 * @param mixed $data
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function respondInternalServerError( $code = null, $message = null, $data = null ): WP_REST_Response {
-		if ( empty( $code ) ) {
-			$code = 'rest_server_error';
-		}
-
-		if ( empty( $message ) ) {
-			$message = 'Sorry, something went wrong.';
-		}
-
 		return $this->setStatusCode( 500 )->respondWithError( $code, $message, $data );
 	}
 }

@@ -29,7 +29,7 @@ trait ApiCrudOperations {
 	 * Registers the routes for the objects of the controller.
 	 */
 	public function register_routes() {
-		$namespace = isset( $this->namespace ) ? $this->namespace : '';
+		$namespace = $this->namespace ?? '';
 		$rest_base = isset( $this->rest_base ) ? trim( $this->rest_base, '/' ) : '';
 		if ( empty( $namespace ) || empty( $rest_base ) ) {
 			_doing_it_wrong( __FUNCTION__, 'namespace and rest_base are required.', '2.1.0' );
