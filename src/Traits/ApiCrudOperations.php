@@ -10,7 +10,7 @@ use WP_REST_Response;
 use WP_REST_Server;
 
 trait ApiCrudOperations {
-	use ApiResponse, ApiUtils;
+	use ApiResponse, ApiUtils, ApiPermissionChecker;
 
 	/**
 	 * Get store class
@@ -129,6 +129,17 @@ trait ApiCrudOperations {
 	}
 
 	/**
+	 * Prepares one item for create or update operation.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 *
+	 * @return mixed|WP_Error The prepared item, or WP_Error object on failure.
+	 */
+	protected function prepare_item_for_database( $request ) {
+		return $request->get_params();
+	}
+
+	/**
 	 * Retrieves a collection of items.
 	 *
 	 * @param WP_REST_Request $request Full details about the request.
@@ -136,11 +147,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function get_items( $request ) {
-		$permission = $this->get_items_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$per_page = (int) $request->get_param( 'per_page' );
 		$page     = (int) $request->get_param( 'page' );
 
@@ -167,11 +173,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function create_item( $request ) {
-		$permission = $this->create_item_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$data = $this->prepare_item_for_database( $request );
 		if ( is_wp_error( $data ) ) {
 			return $this->respondUnprocessableEntity();
@@ -191,11 +192,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function get_item( $request ) {
-		$permission = $this->get_item_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$id   = (int) $request->get_param( 'id' );
 		$item = $this->get_store()->find_single( $id );
 		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
@@ -213,11 +209,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function update_item( $request ) {
-		$permission = $this->update_item_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$id   = (int) $request->get_param( 'id' );
 		$item = $this->get_store()->find_single( $id );
 		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
@@ -243,11 +234,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function delete_item( $request ) {
-		$permission = $this->delete_item_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$id   = (int) $request->get_param( 'id' );
 		$item = $this->get_store()->find_single( $id );
 		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
@@ -267,11 +253,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function trash_item( $request ) {
-		$permission = $this->update_item_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$id   = (int) $request->get_param( 'id' );
 		$item = $this->get_store()->find_single( $id );
 		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
@@ -293,11 +274,6 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function restore_item( $request ) {
-		$permission = $this->update_item_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$id   = (int) $request->get_param( 'id' );
 		$item = $this->get_store()->find_single( $id );
 		if ( ! ( is_array( $item ) || $item instanceof Data ) ) {
@@ -319,109 +295,11 @@ trait ApiCrudOperations {
 	 * @return WP_REST_Response
 	 */
 	public function batch_operation( $request ) {
-		$permission = $this->batch_operation_permissions_check( $request );
-		if ( is_wp_error( $permission ) ) {
-			return $this->respondUnauthorized();
-		}
-
 		$actions = $request->get_params();
 		foreach ( $actions as $action => $data ) {
 			$this->get_store()->batch( $action, $data );
 		}
 
 		return $this->respondAccepted();
-	}
-
-	/**
-	 * Checks if a given request has access to get items.
-	 *
-	 * @param WP_REST_Request $request Full details about the request.
-	 *
-	 * @return true|WP_Error True if the request has read access, WP_Error object otherwise.
-	 */
-	public function get_items_permissions_check( $request ) {
-		return true;
-	}
-
-	/**
-	 * Checks if a given request has access to create items.
-	 *
-	 * @param WP_REST_Request $request Full details about the request.
-	 *
-	 * @return true|WP_Error True if the request has access to create items, WP_Error object otherwise.
-	 */
-	public function create_item_permissions_check( $request ) {
-		if ( ! current_user_can( 'read' ) ) {
-			new WP_Error( 'rest_forbidden_context', __( 'Sorry, you are not allowed to access this resource.' ) );
-		}
-
-		return true;
-	}
-
-	/**
-	 * Checks if a given request has access to get a specific item.
-	 *
-	 * @param WP_REST_Request $request Full details about the request.
-	 *
-	 * @return true|WP_Error True if the request has read access for the item, WP_Error object otherwise.
-	 */
-	public function get_item_permissions_check( $request ) {
-		return true;
-	}
-
-	/**
-	 * Checks if a given request has access to update a specific item.
-	 *
-	 * @param WP_REST_Request $request Full details about the request.
-	 *
-	 * @return true|WP_Error True if the request has access to update the item, WP_Error object otherwise.
-	 */
-	public function update_item_permissions_check( $request ) {
-		if ( ! current_user_can( 'read' ) ) {
-			new WP_Error( 'rest_forbidden_context', __( 'Sorry, you are not allowed to access this resource.' ) );
-		}
-
-		return true;
-	}
-
-	/**
-	 * Checks if a given request has access to delete a specific item.
-	 *
-	 * @param WP_REST_Request $request Full details about the request.
-	 *
-	 * @return true|WP_Error True if the request has access to delete the item, WP_Error object otherwise.
-	 */
-	public function delete_item_permissions_check( $request ) {
-		if ( ! current_user_can( 'read' ) ) {
-			new WP_Error( 'rest_forbidden_context', __( 'Sorry, you are not allowed to access this resource.' ) );
-		}
-
-		return true;
-	}
-
-	/**
-	 * Batch operation permission check
-	 *
-	 * @param WP_REST_Request $request
-	 *
-	 * @return bool|WP_Error
-	 */
-	public function batch_operation_permissions_check( $request ) {
-		if ( ! current_user_can( 'read' ) ) {
-			new WP_Error( 'rest_forbidden_context', __( 'Sorry, you are not allowed to access this resource.' ) );
-		}
-
-		return true;
-	}
-
-	/**
-	 * Prepares one item for create or update operation.
-	 *
-	 * @param WP_REST_Request $request Request object.
-	 *
-	 * @return mixed|WP_Error The prepared item, or WP_Error object on failure.
-	 */
-	protected function prepare_item_for_database( $request ) {
-		return $request->get_params();
 	}
 }
