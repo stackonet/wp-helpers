@@ -1,3 +1,7 @@
+#### 1.4.1
+
+* Fix protected method access issue for api response.
+
 #### 1.4.0
 
 * Add `ApiPermissionChecker` trait class to handle Api permission check.

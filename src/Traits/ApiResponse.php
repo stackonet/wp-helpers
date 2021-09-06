@@ -22,7 +22,7 @@ trait ApiResponse {
 	 *
 	 * @return mixed
 	 */
-	protected function html_entity_decode( $value ) {
+	public function html_entity_decode( $value ) {
 		return is_string( $value ) ?
 			html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, get_option( 'blog_charset', 'UTF-8' ) ) :
 			$value;
