@@ -4,6 +4,11 @@ namespace Stackonet\WP\Framework\Supports;
 
 use Stackonet\WP\Framework\Traits\TableInfo;
 
+/**
+ * QueryBuilder class
+ * A small wrapper class to handle database query
+ * Does not support create/update features
+ */
 class QueryBuilder {
 
 	use TableInfo;
@@ -26,6 +31,23 @@ class QueryBuilder {
 	];
 
 	/**
+	 * Get query builder
+	 *
+	 * @param string $table
+	 *
+	 * @return static
+	 */
+	public static function table( string $table ): QueryBuilder {
+		$query_builder = new static;
+		$table         = $query_builder->get_table_name( $table );
+
+		$query_builder->query['table']       = $table[0];
+		$query_builder->query['table_alias'] = $table[1];
+
+		return $query_builder;
+	}
+
+	/**
 	 * QueryBuilder start time
 	 *
 	 * @var float
@@ -36,6 +58,11 @@ class QueryBuilder {
 		$this->start_time = microtime( true );
 	}
 
+	/**
+	 * Get debug info
+	 *
+	 * @return string[]
+	 */
 	public function __debugInfo() {
 		$data = [
 			'sql' => $this->get_query_sql(),
@@ -67,11 +94,11 @@ class QueryBuilder {
 	 *
 	 * @return string
 	 */
-	public function get_query_sql() {
+	public function get_query_sql(): string {
 		$where = [];
 		foreach ( array_filter( $this->query['where'] ) as $item ) {
 			if ( $this->is_first_order_clause( $item ) ) {
-				$where[] = $this->_get_sql_for_where( $item );
+				$where[] = $this->get_sql_for_where( $item );
 			} else {
 				$relation = $item['relation'];
 				unset( $item['relation'] );
@@ -81,7 +108,7 @@ class QueryBuilder {
 						$_where .= " {$relation} ";
 					}
 
-					$_where .= $this->_get_sql_for_where( $_item );
+					$_where .= $this->get_sql_for_where( $_item );
 				}
 				$_where  .= ')';
 				$where[] = $_where;
@@ -202,7 +229,7 @@ class QueryBuilder {
 	 *
 	 * @return string
 	 */
-	private function _get_sql_for_where( $item ): string {
+	private function get_sql_for_where( $item ): string {
 		global $wpdb;
 
 		if ( $item['nullable'] && is_null( $item['value'] ) ) {
@@ -251,7 +278,7 @@ class QueryBuilder {
 	 *
 	 * @return array
 	 */
-	private function get_table_name( string $table ) {
+	private function get_table_name( string $table ): array {
 		global $wpdb;
 
 		$table_alias = '';
@@ -268,12 +295,12 @@ class QueryBuilder {
 	/**
 	 * Get column name
 	 *
-	 * @param string      $column
+	 * @param string $column
 	 * @param string|null $table_name
 	 *
 	 * @return string[]
 	 */
-	public function get_column_name( string $column, ?string $table_name = null ) {
+	public function get_column_name( string $column, ?string $table_name = null ): array {
 		if ( strpos( $column, '.' ) !== false ) {
 			$data        = explode( '.', $column );
 			$column_name = trim( $data[1] );
@@ -315,30 +342,13 @@ class QueryBuilder {
 	}
 
 	/**
-	 * Get query builder
-	 *
-	 * @param string $table
-	 *
-	 * @return static
-	 */
-	public static function table( string $table ) {
-		$query_builder = new static;
-		$table         = $query_builder->get_table_name( $table );
-
-		$query_builder->query['table']       = $table[0];
-		$query_builder->query['table_alias'] = $table[1];
-
-		return $query_builder;
-	}
-
-	/**
 	 * Determine whether a query clause is first-order.
 	 *
 	 * @param array $query Meta query arguments.
 	 *
 	 * @return bool Whether the query clause is a first-order clause.
 	 */
-	protected function is_first_order_clause( array $query ) {
+	protected function is_first_order_clause( array $query ): bool {
 		return isset( $query['column'] ) || isset( $query['value'] );
 	}
 
@@ -350,7 +360,7 @@ class QueryBuilder {
 	 *
 	 * @return static
 	 */
-	public function order_by( string $column, string $order = 'DESC' ) {
+	public function order_by( string $column, string $order = 'DESC' ): QueryBuilder {
 		$table_info = static::get_table_info( $this->query['table'] );
 		if ( array_key_exists( $column, $table_info ) && in_array( $order, [ 'ASC', 'DESC' ] ) ) {
 			$this->query['order_by'][] = [ 'column' => $column, 'order' => $order ];
@@ -364,7 +374,7 @@ class QueryBuilder {
 	 *
 	 * @return static
 	 */
-	public function in_random_order() {
+	public function in_random_order(): QueryBuilder {
 		$this->query['random_order'] = true;
 
 		return $this;
@@ -377,7 +387,7 @@ class QueryBuilder {
 	 *
 	 * @return static
 	 */
-	public function offset( int $offset = 0 ) {
+	public function offset( int $offset = 0 ): QueryBuilder {
 		$this->query['offset'] = $offset;
 
 		return $this;
@@ -390,7 +400,7 @@ class QueryBuilder {
 	 *
 	 * @return static
 	 */
-	public function limit( int $limit ) {
+	public function limit( int $limit ): QueryBuilder {
 		$this->query['limit'] = $limit;
 
 		return $this;
@@ -403,7 +413,7 @@ class QueryBuilder {
 	 *
 	 * @return static
 	 */
-	public function page( int $page ) {
+	public function page( int $page ): QueryBuilder {
 		if ( $this->query['limit'] > 0 ) {
 			$page = max( 1, $page );
 
@@ -421,7 +431,7 @@ class QueryBuilder {
 	 *
 	 * @return $this
 	 */
-	public function group_by( $group_by ) {
+	public function group_by( $group_by ): QueryBuilder {
 		if ( is_string( $group_by ) ) {
 			$this->query['group_by'][] = $group_by;
 		}
@@ -447,12 +457,12 @@ class QueryBuilder {
 	 *
 	 * @param array|string $column
 	 * @param string|array $value
-	 * @param string       $compare
-	 * @param string       $relation
+	 * @param string $compare
+	 * @param string $relation
 	 *
 	 * @return $this
 	 */
-	public function where( $column, $value = '', $compare = '=', $relation = 'AND' ) {
+	public function where( $column, $value = '', $compare = '=', $relation = 'AND' ): QueryBuilder {
 		$args  = func_get_args();
 		$where = [];
 		if ( is_array( $args[0] ) ) {
@@ -477,7 +487,7 @@ class QueryBuilder {
 	 *
 	 * @return array
 	 */
-	public function get() {
+	public function get(): array {
 		$this->query['mode'] = 'SELECT';
 
 		global $wpdb;
@@ -491,7 +501,7 @@ class QueryBuilder {
 	 *
 	 * @return array|null
 	 */
-	public function first() {
+	public function first(): ?array {
 		$this->query['mode'] = 'SELECT';
 
 		global $wpdb;
@@ -507,7 +517,7 @@ class QueryBuilder {
 	 *
 	 * @return array|null
 	 */
-	public function find( $value ) {
+	public function find( $value ): ?array {
 		$column = static::get_primary_key( $this->query['table'] );
 		$this->where( $column, $value );
 
@@ -541,7 +551,7 @@ class QueryBuilder {
 	 *
 	 * @return $this
 	 */
-	public function select( $columns = [ '*' ] ) {
+	public function select( $columns = [ '*' ] ): QueryBuilder {
 		if ( is_string( $columns ) ) {
 			$columns = [ $columns ];
 		}
@@ -564,7 +574,7 @@ class QueryBuilder {
 	 *
 	 * @return static
 	 */
-	public function join( string $table, string $first_column, string $second_column, string $type = 'INNER' ) {
+	public function join( string $table, string $first_column, string $second_column, string $type = 'INNER' ): QueryBuilder {
 		$type = in_array( strtoupper( $type ), [ 'LEFT', 'RIGHT', 'INNER' ] ) ? $type : 'INNER';
 		list( $table_name, $table_alias ) = $this->get_table_name( $table );
 		$table_info = static::get_table_info( $table_name );

@@ -4,6 +4,7 @@ namespace Stackonet\WP\Framework\Abstracts;
 
 use ArrayObject;
 use Stackonet\WP\Framework\Interfaces\DataStoreInterface;
+use Stackonet\WP\Framework\Supports\QueryBuilder;
 use Stackonet\WP\Framework\Traits\Cacheable;
 use Stackonet\WP\Framework\Traits\TableInfo;
 
@@ -216,6 +217,10 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	public function find_single( $id ) {
 		global $wpdb;
 		$table = $this->get_table_name();
+
+//		$this->get_query_builder()
+//		     ->where( $this->primaryKey, $id )
+//		     ->first();
 
 		$cache_key = $this->get_cache_key_for_single_item( $id );
 		$item      = $this->get_cache( $cache_key );
@@ -796,10 +801,13 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function get_foreign_key_constant_name( string $table1, string $table2 ): string {
 		global $wpdb;
-		$t1 = str_replace( $wpdb->prefix, '', $table1 );
-		$t2 = str_replace( $wpdb->prefix, '', $table2 );
+		$tables = [
+			str_replace( $wpdb->prefix, '', $table1 ),
+			str_replace( $wpdb->prefix, '', $table2 )
+		];
+		asort( $tables );
 
-		return substr( sprintf( "fk_%s__%s", $t1, $t2 ), 0, 64 );
+		return substr( sprintf( "fk_%s__%s", $tables[0], $tables[1] ), 0, 64 );
 	}
 
 	/**
@@ -820,7 +828,7 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 
 		$_data = [];
 		foreach ( $default_data as $key => $value ) {
-			$temp_data     = isset( $data[ $key ] ) ? $data[ $key ] : $value;
+			$temp_data     = $data[ $key ] ?? $value;
 			$_data[ $key ] = $this->serialize( $temp_data );
 		}
 
@@ -873,5 +881,14 @@ abstract class DatabaseModel extends Data implements DataStoreInterface {
 	 */
 	public function count_records( array $args = [] ) {
 		return 0;
+	}
+
+	/**
+	 * Get query builder
+	 *
+	 * @return QueryBuilder
+	 */
+	public function get_query_builder(): QueryBuilder {
+		return QueryBuilder::table( $this->get_table_name() );
 	}
 }

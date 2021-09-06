@@ -1,3 +1,8 @@
+#### 1.4.0
+
+* Add `ApiPermissionChecker` trait class to handle Api permission check.
+* Add query builder support on `DatabaseModel` class.
+
 #### 1.3.2
 
 * Fix global parameters issue on `RestClient` class
