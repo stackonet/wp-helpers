@@ -1,18 +1,18 @@
 {
 	"name": "stackonet/wp-helpers",
 	"description": "A WordPress framework for easy development.",
-	"version": "1.3.2",
+	"version": "1.4.0",
 	"type": "library",
 	"keywords": [
 		"wordpress"
 	],
-	"homepage": "http://www.stackonet.com",
+	"homepage": "https://stackonet.com",
 	"license": "GPL-3.0-or-later",
 	"authors": [
 		{
 			"name": "Stackonet Services (Pvt.) Ltd.",
 			"email": "info@stackonet.com",
-			"homepage": "http://www.stackonet.com"
+			"homepage": "https://stackonet.com"
 		},
 		{
 			"name": "Sayful Islam",
