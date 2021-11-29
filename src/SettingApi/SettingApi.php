@@ -97,15 +97,15 @@ class SettingApi {
 	 *
 	 * @return array
 	 */
-	public function sanitize_options( array $input ) {
+	public function sanitize_options( array $input ): array {
 		$output_array = array();
 		$fields       = $this->get_fields();
-		$options      = (array) $this->get_options();
+		$options      = $this->get_options();
 		foreach ( $fields as $field ) {
-			$key     = isset( $field['id'] ) ? $field['id'] : null;
-			$default = isset( $field['default'] ) ? $field['default'] : null;
-			$type    = isset( $field['type'] ) ? $field['type'] : 'text';
-			$value   = isset( $input[ $field['id'] ] ) ? $input[ $field['id'] ] : $options[ $field['id'] ];
+			$key     = $field['id'] ?? null;
+			$default = $field['default'] ?? null;
+			$type    = $field['type'] ?? 'text';
+			$value   = $input[ $field['id'] ] ?? $options[ $field['id'] ];
 
 			if ( isset( $field['options'] ) && is_array( $field['options'] ) ) {
 				$output_array[ $key ] = in_array( $value, array_keys( $field['options'] ) ) ? $value : $default;
@@ -134,34 +134,28 @@ class SettingApi {
 	 * @param mixed $value
 	 * @param string $type
 	 *
-	 * @return mixed
+	 * @return string|numeric
 	 */
-	private function sanitize_by_input_type( $value, $type = 'text' ) {
+	private function sanitize_by_input_type( $value, string $type = 'text' ) {
 		switch ( $type ) {
 			case 'number':
 				return Sanitize::number( $value );
-				break;
 
 			case 'url':
 				return Sanitize::url( $value );
-				break;
 
 			case 'email':
 				return Sanitize::email( $value );
-				break;
 
 			case 'date':
 				return Sanitize::date( $value );
-				break;
 
 			case 'textarea':
 				return Sanitize::textarea( $value );
-				break;
 
 			case 'text':
 			default:
 				return Sanitize::text( $value );
-				break;
 		}
 	}
 
@@ -170,11 +164,11 @@ class SettingApi {
 	 *
 	 * @return array
 	 */
-	public function get_default_options() {
+	public function get_default_options(): array {
 		$defaults = array();
 
 		foreach ( $this->get_fields() as $field ) {
-			$defaults[ $field['id'] ] = isset( $field['default'] ) ? $field['default'] : '';
+			$defaults[ $field['id'] ] = $field['default'] ?? '';
 		}
 
 		return $defaults;
@@ -185,7 +179,7 @@ class SettingApi {
 	 *
 	 * @return array
 	 */
-	public function get_options() {
+	public function get_options(): array {
 		if ( empty( $this->options ) ) {
 			$defaults      = $this->get_default_options();
 			$options       = get_option( $this->get_option_name() );
@@ -201,7 +195,7 @@ class SettingApi {
 	 * @param array $options
 	 * @param bool $sanitize
 	 */
-	public function update_options( array $options, $sanitize = true ) {
+	public function update_options( array $options, bool $sanitize = true ) {
 		if ( $sanitize ) {
 			$options = $this->sanitize_options( $options );
 		}
@@ -213,7 +207,7 @@ class SettingApi {
 	 *
 	 * @return array
 	 */
-	public function get_panels() {
+	public function get_panels(): array {
 		$panels = apply_filters( 'stackonet/settings/panels', $this->panels );
 
 		// Sort by priority
@@ -229,7 +223,7 @@ class SettingApi {
 	 *
 	 * @return self
 	 */
-	public function set_panels( $panels ) {
+	public function set_panels( array $panels ): SettingApi {
 		foreach ( $panels as $panel ) {
 			$this->set_panel( $panel );
 		}
@@ -242,7 +236,7 @@ class SettingApi {
 	 *
 	 * @return array
 	 */
-	public function get_sections() {
+	public function get_sections(): array {
 		$sections = apply_filters( 'stackonet/settings/sections', $this->sections );
 
 		// Sort by priority
@@ -258,7 +252,7 @@ class SettingApi {
 	 *
 	 * @return self
 	 */
-	public function set_sections( $sections ) {
+	public function set_sections( array $sections ): SettingApi {
 		foreach ( $sections as $section ) {
 			$this->set_section( $section );
 		}
@@ -269,9 +263,9 @@ class SettingApi {
 	/**
 	 * Get settings fields
 	 *
-	 * @return mixed
+	 * @return array
 	 */
-	public function get_fields() {
+	public function get_fields(): array {
 		$fields = apply_filters( 'stackonet/settings/fields', $this->fields );
 
 		// Sort by priority
@@ -287,7 +281,7 @@ class SettingApi {
 	 *
 	 * @return self
 	 */
-	public function set_fields( $fields ) {
+	public function set_fields( array $fields ): SettingApi {
 		foreach ( $fields as $field ) {
 			$this->set_field( $field );
 		}
@@ -304,7 +298,7 @@ class SettingApi {
 	 *
 	 * @return self
 	 */
-	public function set_panel( array $panel ) {
+	public function set_panel( array $panel ): SettingApi {
 		$panel = wp_parse_args( $panel, array(
 			'id'          => '',
 			'title'       => '',
@@ -324,7 +318,7 @@ class SettingApi {
 	 *
 	 * @return self
 	 */
-	public function set_section( array $section ) {
+	public function set_section( array $section ): SettingApi {
 		$section = wp_parse_args( $section, array(
 			'id'          => 'general',
 			'panel'       => '',
@@ -346,7 +340,7 @@ class SettingApi {
 	 *
 	 * @return self
 	 */
-	public function set_field( array $field ) {
+	public function set_field( array $field ): SettingApi {
 		$field = wp_parse_args( $field, array(
 			'type'        => 'text',
 			'section'     => 'general',
@@ -369,7 +363,7 @@ class SettingApi {
 	 *
 	 * @return mixed
 	 */
-	public function sort_by_priority( $array1, $array2 ) {
+	public function sort_by_priority( array $array1, array $array2 ) {
 		return $array1['priority'] - $array2['priority'];
 	}
 
@@ -378,7 +372,7 @@ class SettingApi {
 	 *
 	 * @return string
 	 */
-	public function get_option_name() {
+	public function get_option_name(): ?string {
 		if ( ! empty( $this->menu_fields['option_name'] ) ) {
 			return $this->menu_fields['option_name'];
 		}
@@ -391,7 +385,7 @@ class SettingApi {
 	 *
 	 * @return SettingApi
 	 */
-	public function set_option_name( $option_name ) {
+	public function set_option_name( string $option_name ): SettingApi {
 		$this->option_name = $option_name;
 
 		return $this;

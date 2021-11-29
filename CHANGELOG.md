@@ -1,3 +1,8 @@
+#### 1.5.0
+
+* Add `FormBuilderInterface` class
+* Add functionality to use custom FormBuilder to generate settings page fields
+
 #### 1.4.1
 
 * Fix protected method access issue for api response.
