@@ -2,6 +2,8 @@
 
 namespace Stackonet\WP\Framework\SettingApi;
 
+use Stackonet\WP\Framework\Interfaces\FormBuilderInterface;
+
 defined( 'ABSPATH' ) || exit;
 
 class DefaultSettingApi extends SettingApi {
@@ -12,6 +14,11 @@ class DefaultSettingApi extends SettingApi {
 	 * @var string
 	 */
 	protected $action = 'options.php';
+
+	/**
+	 * @var FormBuilder
+	 */
+	protected $form_builder;
 
 	/**
 	 * Class constructor
@@ -33,11 +40,11 @@ class DefaultSettingApi extends SettingApi {
 	/**
 	 * Sanitize each setting field as needed
 	 *
-	 * @param array $input Contains all settings fields as array keys
+	 * @param array|mixed $input Contains all settings fields as array keys
 	 *
 	 * @return array
 	 */
-	public function sanitize_callback( $input ) {
+	public function sanitize_callback( $input ): array {
 		return $this->sanitize_options( is_array( $input ) ? $input : [] );
 	}
 
@@ -48,8 +55,8 @@ class DefaultSettingApi extends SettingApi {
 		$page_title  = $this->menu_fields['page_title'];
 		$menu_title  = $this->menu_fields['menu_title'];
 		$menu_slug   = $this->menu_fields['menu_slug'];
-		$capability  = isset( $this->menu_fields['capability'] ) ? $this->menu_fields['capability'] : 'manage_options';
-		$parent_slug = isset( $this->menu_fields['parent_slug'] ) ? $this->menu_fields['parent_slug'] : null;
+		$capability  = $this->menu_fields['capability'] ?? 'manage_options';
+		$parent_slug = $this->menu_fields['parent_slug'] ?? null;
 
 		if ( $parent_slug ) {
 			add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug,
@@ -93,7 +100,7 @@ class DefaultSettingApi extends SettingApi {
 				if ( $has_sections ) {
 					echo $this->get_fields_html_by_section( $sections, $panel );
 				} else {
-					echo ( new FormBuilder )->get_fields_html( $this->filter_fields_by_tab(), $option_name, $options );
+					echo $this->get_form_builder()->get_fields_html( $this->filter_fields_by_tab(), $option_name, $options );
 				}
 				submit_button();
 				?>
@@ -107,11 +114,11 @@ class DefaultSettingApi extends SettingApi {
 	 * Get fields HTML by section
 	 *
 	 * @param array $sections Array of section
-	 * @param string $panel Panel id
+	 * @param string|null $panel Panel id
 	 *
 	 * @return string
 	 */
-	public function get_fields_html_by_section( array $sections = [], $panel = null ) {
+	public function get_fields_html_by_section( array $sections = [], ?string $panel = null ): string {
 		$options     = $this->get_options();
 		$option_name = $this->get_option_name();
 
@@ -125,7 +132,7 @@ class DefaultSettingApi extends SettingApi {
 			}
 
 			$fieldsArray = $this->get_fields_by( $section['id'], $panel );
-			$table       .= ( new FormBuilder )->get_fields_html( $fieldsArray, $option_name, $options );
+			$table       .= $this->get_form_builder()->get_fields_html( $fieldsArray, $option_name, $options );
 		}
 
 		return $table;
@@ -135,13 +142,13 @@ class DefaultSettingApi extends SettingApi {
 	 * Generate Option Page Tabs
 	 * @return string
 	 */
-	private function option_page_tabs() {
+	private function option_page_tabs(): string {
 		$panels = $this->get_panels();
 		if ( count( $panels ) < 1 ) {
 			return '';
 		}
 
-		$current_tab = isset ( $_GET['tab'] ) ? $_GET['tab'] : $panels[0]['id'];
+		$current_tab = $_GET['tab'] ?? $panels[0]['id'];
 		$page        = $this->menu_fields['menu_slug'];
 
 		$html = '<h2 class="nav-tab-wrapper wp-clearfix">';
@@ -161,18 +168,18 @@ class DefaultSettingApi extends SettingApi {
 	/**
 	 * Filter settings fields by page tab
 	 *
-	 * @param string $current_tab
+	 * @param string|null $current_tab
 	 *
 	 * @return array
 	 */
-	public function filter_fields_by_tab( $current_tab = null ) {
+	public function filter_fields_by_tab( ?string $current_tab = null ): array {
 		if ( ! $this->has_panels() ) {
 			return $this->get_fields();
 		}
 
 		if ( empty( $current_tab ) ) {
 			$panels      = $this->get_panels();
-			$current_tab = isset ( $_GET['tab'] ) ? $_GET['tab'] : $panels[0]['id'];
+			$current_tab = $_GET['tab'] ?? $panels[0]['id'];
 		}
 
 		return $this->get_fields_by_panel( $current_tab );
@@ -200,20 +207,20 @@ class DefaultSettingApi extends SettingApi {
 	}
 
 	/**
-	 * Check if has panels
+	 * Check if it has panels
 	 *
 	 * @return bool
 	 */
-	public function has_panels() {
+	public function has_panels(): bool {
 		return count( $this->panels ) > 0;
 	}
 
 	/**
-	 * Check if has sections
+	 * Check if it has sections
 	 *
 	 * @return bool
 	 */
-	public function has_sections() {
+	public function has_sections(): bool {
 		return count( $this->sections ) > 0;
 	}
 
@@ -224,7 +231,7 @@ class DefaultSettingApi extends SettingApi {
 	 *
 	 * @return array
 	 */
-	public function get_sections_by_panel( $panel = '' ) {
+	public function get_sections_by_panel( string $panel = '' ): array {
 		if ( empty( $panel ) || ! $this->has_panels() ) {
 			return $this->get_sections();
 		}
@@ -242,12 +249,12 @@ class DefaultSettingApi extends SettingApi {
 	/**
 	 * Get field for current section
 	 *
-	 * @param string $section
-	 * @param string $panel
+	 * @param string|null $section
+	 * @param string|null $panel
 	 *
-	 * @return mixed
+	 * @return array
 	 */
-	public function get_fields_by( $section = '', $panel = '' ) {
+	public function get_fields_by( ?string $section = '', ?string $panel = '' ): array {
 		if ( ( empty( $section ) || ! $this->has_sections() ) && empty( $panel ) ) {
 			return $this->get_fields();
 		}
@@ -268,11 +275,11 @@ class DefaultSettingApi extends SettingApi {
 	/**
 	 * Filter settings fields by page tab
 	 *
-	 * @param string $panel
+	 * @param string|null $panel
 	 *
 	 * @return array
 	 */
-	public function get_fields_by_panel( $panel = '' ) {
+	public function get_fields_by_panel( ?string $panel = '' ): array {
 		$sections = $this->get_sections_by_panel( $panel );
 
 		if ( count( $sections ) < 1 ) {
@@ -286,5 +293,23 @@ class DefaultSettingApi extends SettingApi {
 		}
 
 		return $fields;
+	}
+
+	/**
+	 * @return FormBuilderInterface
+	 */
+	public function get_form_builder(): FormBuilderInterface {
+		if ( ! $this->form_builder instanceof FormBuilderInterface ) {
+			$this->set_form_builder( new FormBuilder );
+		}
+
+		return $this->form_builder;
+	}
+
+	/**
+	 * @param FormBuilderInterface $form_builder
+	 */
+	public function set_form_builder( FormBuilderInterface $form_builder ): void {
+		$this->form_builder = $form_builder;
 	}
 }

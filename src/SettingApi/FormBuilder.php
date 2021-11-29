@@ -2,33 +2,42 @@
 
 namespace Stackonet\WP\Framework\SettingApi;
 
-// If this file is called directly, abort.
+use Stackonet\WP\Framework\Interfaces\FormBuilderInterface;
 use Stackonet\WP\Framework\Supports\Validate;
 
+// If this file is called directly, abort.
 defined( 'ABSPATH' ) || die;
 
-class FormBuilder {
+class FormBuilder implements FormBuilderInterface {
 
-	/**
-	 * Settings fields
-	 *
-	 * @param array  $fields
-	 * @param string $option_name
-	 * @param array  $values
-	 *
-	 * @return string
-	 */
-	public function get_fields_html( array $fields, $option_name, array $values = [] ) {
-		$table = "";
-		$table .= "<table class='form-table'>";
+	protected $option_name = null;
+	protected $fields_settings = [];
+	protected $values = [];
 
-		foreach ( $fields as $field ) {
-			$type  = isset( $field['type'] ) ? $field['type'] : 'text';
-			$name  = sprintf( '%s[%s]', $option_name, $field['id'] );
-			$value = isset( $values[ $field['id'] ] ) ? $values[ $field['id'] ] : '';
+	public function set_fields_settings( array $settings ): void {
+		$this->fields_settings = $settings;
+	}
+
+	public function set_option_name( string $option_name ): void {
+		$this->option_name = $option_name;
+	}
+
+	public function set_values( array $values ): void {
+		$this->values = $values;
+	}
+
+	public function render(): string {
+		$table = "<table class='form-table'>";
+
+		foreach ( $this->fields_settings as $field ) {
+			$type  = $field['type'] ?? 'text';
+			$name  = sprintf( '%s[%s]', $this->option_name, $field['id'] );
+			$value = $this->values[ $field['id'] ] ?? '';
 
 			$table .= "<tr>";
-			$table .= sprintf( '<th scope="row"><label for="%1$s">%2$s</label></th>', $field['id'], $field['title'] );
+			if ( ! empty( $field['title'] ) ) {
+				$table .= sprintf( '<th scope="row"><label for="%1$s">%2$s</label></th>', $field['id'], $field['title'] );
+			}
 			$table .= "<td>";
 
 			if ( method_exists( $this, $type ) ) {
@@ -50,86 +59,64 @@ class FormBuilder {
 	}
 
 	/**
-	 * text input field
+	 * Settings fields
 	 *
-	 * @param array  $field
-	 * @param string $name
-	 * @param string $value
+	 * @param array $fields
+	 * @param string $option_name
+	 * @param array $values
 	 *
 	 * @return string
 	 */
-	public function text( $field, $name, $value ) {
-		return sprintf( '<input type="text" class="regular-text" value="%1$s" id="%2$s" name="%3$s">', $value,
-			$field['id'], $name );
+	public function get_fields_html( array $fields, string $option_name, array $values = [] ): string {
+		$this->set_fields_settings( $fields );
+		$this->set_option_name( $option_name );
+		$this->set_values( $values );
+
+		return $this->render();
 	}
 
 	/**
-	 * email input field
+	 * text input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function email( $field, $name, $value ) {
-		return sprintf( '<input type="email" class="regular-text" value="%1$s" id="%2$s" name="%3$s">', $value,
-			$field['id'], $name );
+	public function text( array $field, string $name, $value ): string {
+		$types = [ 'email', 'number', 'url', 'date', 'time' ];
+		$type  = in_array( $field['type'], $types ) ? $field['type'] : 'text';
+
+		return sprintf( '<input class="regular-text" value="%1$s" id="%2$s" name="%3$s" type="%4$s">',
+			esc_attr( $value ), esc_attr( $field['id'] ), esc_attr( $name ), esc_attr( $type ) );
 	}
 
 	/**
 	 * password input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function password( $field, $name, $value ) {
-		return sprintf( '<input type="password" class="regular-text" value="" id="%2$s" name="%3$s">', $value,
-			$field['id'], $name );
-	}
-
-	/**
-	 * number input field
-	 *
-	 * @param array  $field
-	 * @param string $name
-	 * @param string $value
-	 *
-	 * @return string
-	 */
-	public function number( $field, $name, $value ) {
-		return sprintf( '<input type="number" class="regular-text" value="%1$s" id="%2$s" name="%3$s">', $value,
-			$field['id'], $name );
-	}
-
-	/**
-	 * url input field
-	 *
-	 * @param array  $field
-	 * @param string $name
-	 * @param string $value
-	 *
-	 * @return string
-	 */
-	public function url( $field, $name, $value ) {
-		return sprintf( '<input type="url" class="regular-text" value="%1$s" id="%2$s" name="%3$s">', $value,
+	public function password( array $field, string $name, $value ): string {
+		return sprintf( '<input type="password" class="regular-text" value="" id="%1$s" name="%2$s">',
 			$field['id'], $name );
 	}
 
 	/**
 	 * color input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function color( $field, $name, $value ) {
-		$default_color = ( isset( $field['default'] ) ) ? $field['std'] : "";
+	public function color( array $field, string $name, $value ): string {
+		$default_color = $field['default'] ?? "";
 
 		return sprintf(
 			'<input type="text" class="color-picker" value="%1$s" id="%2$s" name="%3$s" data-alpha="true" data-default-color="%4$s">',
@@ -137,45 +124,15 @@ class FormBuilder {
 	}
 
 	/**
-	 * date input field
-	 *
-	 * @param array  $field
-	 * @param string $name
-	 * @param string $value
-	 *
-	 * @return string
-	 */
-	public function date( $field, $name, $value ) {
-		$value = ! empty( $value ) ? date( "Y-m-d", strtotime( $value ) ) : '';
-
-		return sprintf( '<input type="date" class="regular-text" value="%1$s" id="%2$s" name="%3$s">',
-			$value, $field['id'], $name );
-	}
-
-	/**
-	 * date input field
-	 *
-	 * @param array  $field
-	 * @param string $name
-	 * @param string $value
-	 *
-	 * @return string
-	 */
-	public function time( $field, $name, $value ) {
-		return sprintf( '<input type="time" class="regular-text" value="%1$s" id="%2$s" name="%3$s">',
-			$value, $field['id'], $name );
-	}
-
-	/**
 	 * textarea input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function textarea( $field, $name, $value ) {
+	public function textarea( array $field, string $name, $value ): string {
 		$rows        = ( isset( $field['rows'] ) ) ? $field['rows'] : 5;
 		$cols        = ( isset( $field['cols'] ) ) ? $field['cols'] : 40;
 		$placeholder = ( isset( $field['placeholder'] ) ) ? sprintf( 'placeholder="%s"',
@@ -190,13 +147,13 @@ class FormBuilder {
 	/**
 	 * checkbox input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function checkbox( $field, $name, $value ) {
+	public function checkbox( array $field, string $name, $value ): string {
 		$true_value  = isset( $field['true-value'] ) ? esc_attr( $field['true-value'] ) : '1';
 		$false_value = isset( $field['false-value'] ) ? esc_attr( $field['false-value'] ) : '0';
 
@@ -213,13 +170,13 @@ class FormBuilder {
 	/**
 	 * multi checkbox input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param array  $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function multi_checkbox( $field, $name, $value ) {
+	public function multi_checkbox( array $field, string $name, $value ): string {
 		$table = "<fieldset>";
 		$name  = $name . "[]";
 
@@ -236,13 +193,13 @@ class FormBuilder {
 	/**
 	 * radio input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function radio( $field, $name, $value ) {
+	public function radio( array $field, string $name, $value ): string {
 		$table = '<fieldset><legend class="screen-reader-text"><span>' . $field['name'] . '</span></legend><p>';
 
 		foreach ( $field['options'] as $key => $label ) {
@@ -258,13 +215,13 @@ class FormBuilder {
 	/**
 	 * select input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function select( $field, $name, $value ) {
+	public function select( array $field, string $name, $value ): string {
 		$table = sprintf( '<select id="%1$s" name="%2$s" class="regular-text">', $field['id'], $name );
 		foreach ( $field['options'] as $key => $label ) {
 			$selected = ( $value == $key ) ? 'selected="selected"' : '';
@@ -278,24 +235,24 @@ class FormBuilder {
 	/**
 	 * Get available image sizes
 	 *
-	 * @param $field
-	 * @param $name
-	 * @param $value
+	 * @param array $field
+	 * @param string $name
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function image_sizes( $field, $name, $value ) {
+	public function image_sizes( array $field, string $name, $value ): string {
 
 		global $_wp_additional_image_sizes;
 
-		$sizes = array();
+		$sizes = [];
 
 		foreach ( get_intermediate_image_sizes() as $_size ) {
-			if ( in_array( $_size, array( 'thumbnail', 'medium', 'medium_large', 'large' ) ) ) {
+			if ( in_array( $_size, [ 'thumbnail', 'medium', 'medium_large', 'large' ] ) ) {
 
 				$width  = get_option( "{$_size}_size_w" );
 				$height = get_option( "{$_size}_size_h" );
-				$crop   = (bool) get_option( "{$_size}_crop" ) ? 'hard' : 'soft';
+				$crop   = get_option( "{$_size}_crop" ) ? 'hard' : 'soft';
 
 				$sizes[ $_size ] = "{$_size} - {$width}x{$height} ($crop crop)";
 
@@ -324,20 +281,20 @@ class FormBuilder {
 	/**
 	 * wp_editor input field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return string
 	 */
-	public function wp_editor( $field, $name, $value ) {
+	public function wp_editor( array $field, string $name, $value ): string {
 		ob_start();
 		echo "<div class='sp-wp-editor-container'>";
 		wp_editor( $value, $field['id'], array(
 			'textarea_name' => $name,
 			'tinymce'       => false,
 			'media_buttons' => false,
-			'textarea_rows' => isset( $field['rows'] ) ? $field['rows'] : 6,
+			'textarea_rows' => $field['rows'] ?? 6,
 			'quicktags'     => array( "buttons" => "strong,em,link,img,ul,li,ol" ),
 		) );
 		echo "</div>";
@@ -348,14 +305,14 @@ class FormBuilder {
 	/**
 	 * Get html field
 	 *
-	 * @param array  $field
+	 * @param array $field
 	 * @param string $name
-	 * @param string $value
+	 * @param mixed $value
 	 *
 	 * @return mixed
 	 */
-	public function html( $field, $name, $value ) {
-		if ( isset( $field['html'] ) ) {
+	public function html( array $field, string $name, $value ): string {
+		if ( isset( $field['html'] ) && is_string( $field['html'] ) ) {
 			return $field['html'];
 		}
 
