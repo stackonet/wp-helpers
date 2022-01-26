@@ -272,6 +272,39 @@ class Validate {
 	}
 
 	/**
+	 * Check if value is json
+	 *
+	 * @param mixed $string The value to be checked.
+	 *
+	 * @return bool
+	 */
+	public static function json( $string ): bool {
+		if ( ! is_string( $string ) ) {
+			return false;
+		}
+		json_decode( $string );
+
+		return ( json_last_error() === JSON_ERROR_NONE );
+	}
+
+	/**
+	 * Validate as phone number
+	 * However, this will also match numbers that are not a valid phone number.
+	 *
+	 * @param mixed $phone_e164 The phone number in E164 format.
+	 * Format must be a number up to fifteen digits in length
+	 * Starting with a ‘+’ sign, country code (1 to 3 digits), subscriber number (max 12 digits)
+	 * @param int $min_length Minimum number length.
+	 *
+	 * @return bool
+	 */
+	public static function phone( $phone_e164, int $min_length = 5 ): bool {
+		$min = $min_length - 1;
+
+		return ! ! ( is_string( $phone_e164 ) && preg_match( "/^\+[1-9]\d{{$min},14}$/", $phone_e164 ) );
+	}
+
+	/**
 	 * Checks if one given input matches the other.
 	 * For example, checking if password matches password_confirm.
 	 *

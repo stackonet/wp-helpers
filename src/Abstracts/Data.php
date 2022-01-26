@@ -31,7 +31,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	/**
 	 * Data constructor.
 	 *
-	 * @param array $data
+	 * @param mixed $data
 	 */
 	public function __construct( $data = [] ) {
 		if ( is_array( $data ) ) {
@@ -75,7 +75,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return array
 	 */
-	public function to_array() {
+	public function to_array(): array {
 		return $this->get_data();
 	}
 
@@ -86,15 +86,15 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	public function has( string $key ) {
+	public function has( string $key ): bool {
 		return isset( $this->data[ $key ] );
 	}
 
 	/**
 	 * Set collection item
 	 *
-	 * @param string $key   The data key
-	 * @param mixed  $value The data value
+	 * @param string $key The data key
+	 * @param mixed $value The data value
 	 */
 	public function set( string $key, $value ) {
 		$this->data[ $key ] = $value;
@@ -105,19 +105,14 @@ class Data implements ArrayAccess, JsonSerializable {
 	/**
 	 * Get collection item for key
 	 *
-	 * @param string $key     The data key
-	 * @param mixed  $default The default value to return if data key does not exist
+	 * @param string $key The data key
+	 * @param mixed $default The default value to return if data key does not exist
 	 *
 	 * @return mixed The key's value, or the default value
 	 */
 	public function get( string $key, $default = '' ) {
 		if ( $this->has( $key ) ) {
-			$value = $this->data[ $key ];
-			if ( is_numeric( $value ) ) {
-				return is_float( $value ) ? (float) $value : (int) $value;
-			}
-
-			return $value;
+			return $this->data[ $key ];
 		}
 
 		return $default;
@@ -143,12 +138,6 @@ class Data implements ArrayAccess, JsonSerializable {
 	 */
 	public function set_data( array $data ) {
 		foreach ( $data as $key => $value ) {
-			if ( is_numeric( $value ) ) {
-				$value = is_float( $value ) ? (float) $value : (int) $value;
-			}
-			if ( is_serialized( $value ) ) {
-				$value = @unserialize( $value );
-			}
 			$this->data[ $key ] = $value;
 		}
 	}
@@ -163,13 +152,13 @@ class Data implements ArrayAccess, JsonSerializable {
 	}
 
 	/**
-	 * Whether a offset exists
+	 * Whether an offset exists
 	 *
 	 * @param mixed $offset An offset to check for.
 	 *
 	 * @return boolean true on success or false on failure.
 	 */
-	public function offsetExists( $offset ) {
+	public function offsetExists( $offset ): bool {
 		return $this->has( $offset );
 	}
 
@@ -188,7 +177,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 * Offset to set
 	 *
 	 * @param mixed $offset The offset to assign the value to.
-	 * @param mixed $value  The value to set.
+	 * @param mixed $value The value to set.
 	 *
 	 * @return void
 	 */
@@ -212,7 +201,7 @@ class Data implements ArrayAccess, JsonSerializable {
 	 *
 	 * @return array data which can be serialized by json_encode
 	 */
-	public function jsonSerialize() {
+	public function jsonSerialize(): array {
 		return $this->to_array();
 	}
 }

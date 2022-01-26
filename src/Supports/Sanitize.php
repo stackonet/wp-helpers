@@ -16,10 +16,18 @@ class Sanitize {
 	 *
 	 * @param mixed $value The value to be sanitized.
 	 *
-	 * @return integer|double|string
+	 * @return float|integer
 	 */
 	public static function number( $value ) {
-		return is_numeric( $value ) ? $value : intval( $value );
+		if ( ! is_numeric( $value ) ) {
+			return 0;
+		}
+
+		if ( preg_match( '/^\\d+\\.\\d+$/', $value ) === 1 ) {
+			return floatval( $value );
+		}
+
+		return intval( $value );
 	}
 
 	/**
@@ -103,10 +111,13 @@ class Sanitize {
 	 *
 	 * @param mixed $value
 	 *
-	 * @return boolean
+	 * @return string|bool|int
 	 */
-	public static function checked( $value ): bool {
-		return in_array( $value, array( 'yes', 'on', '1', 1, true, 'true' ), true );
+	public static function checked( $value ) {
+		$true_values  = [ 'yes', 'on', '1', 1, true, 'true' ];
+		$false_values = [ 'no', 'off', '0', 0, false, 'false' ];
+
+		return in_array( $value, array_merge( $true_values, $false_values ), true ) ? $value : '';
 	}
 
 	/**
@@ -127,6 +138,38 @@ class Sanitize {
 	}
 
 	/**
+	 * Sanitize colors.
+	 *
+	 * @param mixed $value The color.
+	 *
+	 * @return string
+	 */
+	public static function color( $value ): string {
+		// If the value is empty, then return empty.
+		if ( '' === $value || ! is_string( $value ) ) {
+			return '';
+		}
+
+		// Trim unneeded whitespace.
+		$value = str_replace( ' ', '', $value );
+
+		// This pattern will check and match 3/6/8-character hex, rgb, rgba, hsl, & hsla colors.
+		$pattern = '/^(\#[\da-f]{3}|\#[\da-f]{6}|\#[\da-f]{8}|';
+		$pattern .= 'rgba\(((\d{1,2}|1\d\d|2([0-4]\d|5[0-5]))\s*,\s*){2}((\d{1,2}|1\d\d|2([0-4]\d|5[0-5]))\s*)(,\s*(0\.\d+|1))\)|';
+		$pattern .= 'hsla\(\s*((\d{1,2}|[1-2]\d{2}|3([0-5]\d|60)))\s*,\s*((\d{1,2}|100)\s*%)\s*,\s*((\d{1,2}|100)\s*%)(,\s*(0\.\d+|1))\)|';
+		$pattern .= 'rgb\(((\d{1,2}|1\d\d|2([0-4]\d|5[0-5]))\s*,\s*){2}((\d{1,2}|1\d\d|2([0-4]\d|5[0-5]))\s*)\)|';
+		$pattern .= 'hsl\(\s*((\d{1,2}|[1-2]\d{2}|3([0-5]\d|60)))\s*,\s*((\d{1,2}|100)\s*%)\s*,\s*((\d{1,2}|100)\s*%)\))$/';
+
+		// Return the 1st match found.
+		if ( 1 === preg_match( $pattern, $value ) ) {
+			return $value;
+		}
+
+		// If no match was found, return an empty string.
+		return '';
+	}
+
+	/**
 	 * Sanitize short block html input
 	 *
 	 * @param $value
@@ -134,34 +177,7 @@ class Sanitize {
 	 * @return string
 	 */
 	public static function html( $value ): string {
-		return wp_kses( $value, static::allowed_html_tags_short_block() );
-	}
-
-	/**
-	 * Array of allowed html tags on short block
-	 *
-	 * @return array
-	 */
-	private static function allowed_html_tags_short_block(): array {
-		return [
-			'div'    => [ 'class' => [], 'id' => [], ],
-			'span'   => [ 'class' => [], 'id' => [], ],
-			'ol'     => [ 'class' => [], 'id' => [], ],
-			'ul'     => [ 'class' => [], 'id' => [], ],
-			'li'     => [ 'class' => [], 'id' => [], ],
-			'p'      => [ 'class' => [], 'id' => [], ],
-			'a'      => [
-				'href'   => [],
-				'class'  => [],
-				'id'     => [],
-				'rel'    => [],
-				'title'  => [],
-				'target' => [],
-			],
-			'br'     => [],
-			'em'     => [],
-			'strong' => [],
-		];
+		return wp_kses_post( $value );
 	}
 
 	/**
@@ -172,20 +188,20 @@ class Sanitize {
 	 * @return mixed
 	 */
 	public static function deep( $value ) {
-		if ( is_null( $value ) || empty( $value ) ) {
+		if ( empty( $value ) ) {
 			return $value;
 		}
 		if ( is_scalar( $value ) ) {
 			if ( is_numeric( $value ) ) {
-				return is_float( $value ) ? floatval( $value ) : intval( $value );
+				return self::number( $value );
 			}
 
-			// Check if value contains HTML
+			// Check if value contains HTML tags.
 			if ( $value != strip_tags( $value ) ) {
-				return wp_kses_post( $value );
+				return self::html( $value );
 			}
 
-			return sanitize_textarea_field( $value );
+			return self::textarea( $value );
 		}
 
 		$sanitized_value = [];
