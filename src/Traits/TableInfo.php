@@ -4,17 +4,36 @@ namespace Stackonet\WP\Framework\Traits;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * TableInfo trait class
+ */
 trait TableInfo {
 
 	/**
+	 * Collection of table information.
+	 *
 	 * @var array
 	 */
 	protected static $table_info = [];
 
 	/**
+	 * Get table info
+	 *
+	 * @param string $table The table name.
+	 *
+	 * @return array
+	 */
+	public static function show_columns_from( string $table ): array {
+		global $wpdb;
+		$results = $wpdb->get_results( "SHOW COLUMNS FROM $table", ARRAY_A ); // phpcs:ignore
+
+		return is_array( $results ) ? $results : [];
+	}
+
+	/**
 	 * Get column info
 	 *
-	 * @param string $table
+	 * @param string $table The table name.
 	 *
 	 * @return array|false
 	 */
@@ -25,8 +44,9 @@ trait TableInfo {
 
 		$info = wp_cache_get( $table, 'table-column-info' );
 		if ( ! is_array( $info ) ) {
-			$info = static::$table_info[ $table ] = static::get_formatted_info( $table );
+			$info = static::get_formatted_info( $table );
 			wp_cache_set( $table, $info, 'table-column-info', WEEK_IN_SECONDS );
+			static::$table_info[ $table ] = $info;
 		}
 
 		return $info;
@@ -35,7 +55,7 @@ trait TableInfo {
 	/**
 	 * Get primary key
 	 *
-	 * @param string $table
+	 * @param string $table The table name.
 	 *
 	 * @return string
 	 */
@@ -53,7 +73,7 @@ trait TableInfo {
 	/**
 	 * Get primary key data format
 	 *
-	 * @param string $table
+	 * @param string $table The table name.
 	 *
 	 * @return string
 	 */
@@ -71,11 +91,11 @@ trait TableInfo {
 	/**
 	 * Get column name
 	 *
-	 * @param string $table
+	 * @param string $table The table name.
 	 *
 	 * @return array
 	 */
-	public function get_columns_names( string $table ): array {
+	public static function get_columns_names( string $table ): array {
 		return array_keys( static::get_table_info( $table ) );
 	}
 
@@ -83,8 +103,8 @@ trait TableInfo {
 	/**
 	 * Format data by type
 	 *
-	 * @param string $table
-	 * @param array $data
+	 * @param string $table The table name.
+	 * @param array  $data The data that is going to insert into database.
 	 *
 	 * @return array
 	 */
@@ -96,9 +116,9 @@ trait TableInfo {
 				continue;
 			}
 			$data_format = $column_info[ $key ]['data_format'];
-			if ( '%d' == $data_format ) {
+			if ( '%d' === $data_format ) {
 				$formatted_data[ $key ] = intval( $value );
-			} elseif ( '%f' == $data_format ) {
+			} elseif ( '%f' === $data_format ) {
 				$formatted_data[ $key ] = floatval( $value );
 			} else {
 				$formatted_data[ $key ] = $value;
@@ -111,8 +131,8 @@ trait TableInfo {
 	/**
 	 * Get data format for db
 	 *
-	 * @param string $table
-	 * @param array $data
+	 * @param string $table The table name.
+	 * @param array  $data The data that is going to insert into database.
 	 *
 	 * @return array
 	 */
@@ -140,29 +160,34 @@ trait TableInfo {
 	/**
 	 * Get default data
 	 *
-	 * @param string $table
+	 * @param string $table The table name.
 	 *
 	 * @return array
 	 */
 	public static function get_default_data( string $table ): array {
 		$columns = static::get_table_info( $table );
 		$data    = [];
-		foreach ( $columns as $columnName => $info ) {
+		foreach ( $columns as $column_name => $info ) {
 			if ( $info['nullable'] ) {
 				$default = null;
 			} else {
-				$default = isset( $info['default'] ) ? $info['default'] : '';
+				$default = $info['default'] ?? '';
 			}
 
-			if ( in_array( $columnName, static::get_integer_data_type() ) ) {
+			$words = str_word_count( $info['type'], 1 );
+			if ( count( $words ) > 1 ) {
+				$info['type'] = $words[0];
+			}
+
+			if ( in_array( $info['type'], static::get_integer_data_type(), true ) ) {
 				$default = 0;
 			}
 
-			if ( in_array( $columnName, static::get_float_data_type() ) ) {
+			if ( in_array( $info['type'], static::get_float_data_type(), true ) ) {
 				$default = 0;
 			}
 
-			$data[ $columnName ] = $default;
+			$data[ $column_name ] = $default;
 		}
 
 		return $data;
@@ -171,12 +196,12 @@ trait TableInfo {
 	/**
 	 * Get formatted table info
 	 *
-	 * @param string $table
+	 * @param string $table The table name.
 	 *
 	 * @return array
 	 */
 	private static function get_formatted_info( string $table ): array {
-		$results = static::get_info( $table );
+		$results = static::show_columns_from( $table );
 		$info    = [];
 		foreach ( $results as $column ) {
 			$length = static::get_type_and_length( $column['Type'] );
@@ -186,15 +211,15 @@ trait TableInfo {
 				'default'     => $column['Default'],
 				'type'        => $length['type'],
 				'length'      => $length['length'],
-				'nullable'    => strtolower( $column['Null'] ) == 'yes',
+				'nullable'    => strtolower( $column['Null'] ) === 'yes',
 				'data_format' => static::get_data_format_for_type( $length['type'] ),
 			];
 
-			if ( isset( $column['Key'] ) && $column['Key'] == 'PRI' ) {
+			if ( isset( $column['Key'] ) && 'PRI' === $column['Key'] ) {
 				$column_info['primary'] = true;
 			}
 
-			if ( isset( $column['Extra'] ) && $column['Extra'] == 'auto_increment' ) {
+			if ( isset( $column['Extra'] ) && 'auto_increment' === $column['Extra'] ) {
 				$column_info['auto_increment'] = true;
 			}
 
@@ -209,79 +234,93 @@ trait TableInfo {
 	}
 
 	/**
-	 * Get table info
-	 *
-	 * @param string $table
-	 *
-	 * @return array|null
-	 */
-	private static function get_info( string $table ): ?array {
-		global $wpdb;
-		$sql = "SHOW COLUMNS FROM `{$table}`";
-
-		$results = $wpdb->get_results( $sql, ARRAY_A );
-
-		return is_array( $results ) ? $results : null;
-	}
-
-	/**
 	 * Get type and max length
 	 *
-	 * @param string $typeInfo
+	 * @param string $type_info Table column type.
 	 *
 	 * @return array
 	 */
-	private static function get_type_and_length( string $typeInfo ): array {
-		$type_info = explode( '(', $typeInfo );
-		$type      = strtolower( $type_info[0] );
-		$length    = false;
-		if ( ! empty( $type_info[1] ) ) {
-			$length_info = explode( ')', $type_info[1] );
+	private static function get_type_and_length( string $type_info ): array {
+		$types  = explode( '(', $type_info );
+		$type   = strtolower( $types[0] );
+		$length = false;
+		if ( ! empty( $types[1] ) ) {
+			$length_info = explode( ')', $types[1] );
 			$length      = intval( $length_info[0] );
+		}
+
+		$words = str_word_count( $type, 1 );
+		if ( count( $words ) > 1 ) {
+			$type = $words[0];
 		}
 
 		switch ( $type ) {
 			case 'char':
 			case 'varchar':
-				return array( 'type' => 'char', 'length' => (int) $length, );
+				return [
+					'type'   => 'char',
+					'length' => (int) $length,
+				];
 
 			case 'binary':
 			case 'varbinary':
-				return array( 'type' => 'byte', 'length' => (int) $length, );
+				return [
+					'type'   => 'byte',
+					'length' => (int) $length,
+				];
 
 			case 'tinyblob':
 			case 'tinytext':
-				return array( 'type' => 'byte', 'length' => 255, ); // 2^8 - 1
+				return [
+					'type'   => 'byte',
+					'length' => 255,
+				]; // 2^8 - 1
 
 			case 'blob':
 			case 'text':
-				return array( 'type' => 'byte', 'length' => 65535, ); // 2^16 - 1
+				return [
+					'type'   => 'byte',
+					'length' => 65535,
+				]; // 2^16 - 1
 
 			case 'mediumblob':
 			case 'mediumtext':
-				return array( 'type' => 'byte', 'length' => 16777215, ); // 2^24 - 1
+				return [
+					'type'   => 'byte',
+					'length' => 16777215,
+				]; // 2^24 - 1
 
 			case 'longblob':
 			case 'longtext':
-				return array( 'type' => 'byte', 'length' => 4294967295, ); // 2^32 - 1
+				return [
+					'type'   => 'byte',
+					'length' => 4294967295,
+				]; // 2^32 - 1
 
 			default:
-				return array( 'type' => $type, 'length' => $length, );
+				return [
+					'type'   => $type,
+					'length' => $length,
+				];
 		}
 	}
 
 	/**
 	 * Get data format for db
 	 *
-	 * @param string $type
+	 * @param string $type Table column type.
 	 *
 	 * @return string
 	 */
 	private static function get_data_format_for_type( string $type ): string {
-		if ( in_array( $type, static::get_integer_data_type() ) ) {
+		$words = str_word_count( $type, 1 );
+		if ( count( $words ) > 1 ) {
+			$type = $words[0];
+		}
+		if ( in_array( $type, static::get_integer_data_type(), true ) ) {
 			return '%d';
 		}
-		if ( in_array( $type, static::get_float_data_type() ) ) {
+		if ( in_array( $type, static::get_float_data_type(), true ) ) {
 			return '%f';
 		}
 
@@ -299,7 +338,7 @@ trait TableInfo {
 	}
 
 	/**
-	 * get float data type
+	 * Get float data type
 	 *
 	 * @return array
 	 */

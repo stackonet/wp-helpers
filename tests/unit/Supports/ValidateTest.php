@@ -125,4 +125,27 @@ class ValidateTest extends \WP_UnitTestCase {
 		$this->assertTrue( Validate::phone( '+8801701309039', 13 ) );
 		$this->assertFalse( Validate::phone( '88017013090' ) );
 	}
+
+	public function test_it_validate_boolean() {
+		$this->assertTrue( Validate::bool( true ) );
+		$this->assertTrue( Validate::bool( false ) );
+		$this->assertTrue( Validate::bool( 'true' ) );
+		$this->assertTrue( Validate::bool( 'false' ) );
+		$this->assertTrue( Validate::bool( 0 ) );
+		$this->assertTrue( Validate::bool( 1 ) );
+		$this->assertTrue( Validate::bool( '0' ) );
+		$this->assertTrue( Validate::bool( '1' ) );
+	}
+
+	public function test_it_validate_ip() {
+		$this->assertTrue( Validate::ip( '127.0.0.1' ) );
+		$this->assertTrue( Validate::ip( '192.168.1.1' ) );
+	}
+
+	public function test_it_validate_user_info() {
+		$this->assertTrue( Validate::username( 'admin' ) );
+		$this->assertTrue( Validate::user_login( 'admin' ) );
+		$this->assertTrue( Validate::user_login( 'admin@example.org' ) );
+		$this->assertTrue( Validate::user_email( 'admin@example.org' ) );
+	}
 }

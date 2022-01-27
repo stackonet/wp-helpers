@@ -218,22 +218,6 @@ class Validate {
 	}
 
 	/**
-	 * Check if the given input has a match for the regular expression given
-	 *
-	 * @param mixed $value The value to be validated.
-	 * @param mixed $regex The value to be validated.
-	 *
-	 * @return boolean
-	 */
-	public static function regex( $value, $regex ): bool {
-		if ( is_string( $value ) && is_string( $regex ) ) {
-			return (bool) preg_match( $regex, $value );
-		}
-
-		return false;
-	}
-
-	/**
 	 * If a field has been 'checked' or not, meaning it contains
 	 * one of the following values: 'yes', 'on', '1', 1, true, or 'true'.
 	 * This can be used for determining if an HTML checkbox has been checked.
