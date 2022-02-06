@@ -38,7 +38,7 @@ trait ApiUtils {
 	/**
 	 * Format date for ISO8601 (Y-m-d\TH:i:s)
 	 *
-	 * @param string $date_string
+	 * @param string $date_string The date string.
 	 *
 	 * @return string
 	 */
@@ -49,15 +49,15 @@ trait ApiUtils {
 			Logger::log( $e );
 		}
 
-		return $date_string;
+		return '0000-00-00Y00:00:00';
 	}
 
 	/**
 	 * Generate pagination metadata
 	 *
-	 * @param int $total_items
-	 * @param int $per_page
-	 * @param int $current_page
+	 * @param int $total_items Total available items.
+	 * @param int $per_page Items to show per page.
+	 * @param int $current_page The current page.
 	 *
 	 * @return array
 	 */
@@ -67,10 +67,10 @@ trait ApiUtils {
 		$total_items  = intval( $total_items );
 
 		return [
-			"total_items"  => $total_items,
-			"per_page"     => $per_page,
-			"current_page" => $current_page,
-			"total_pages"  => ceil( $total_items / $per_page ),
+			'total_items'  => $total_items,
+			'per_page'     => $per_page,
+			'current_page' => $current_page,
+			'total_pages'  => ceil( $total_items / $per_page ),
 		];
 	}
 
@@ -81,7 +81,7 @@ trait ApiUtils {
 	 * GET ...?sort=title+DESC
 	 * GET ...?sort=title+DESC,author+ASC
 	 *
-	 * @param string|null $sort
+	 * @param string|null $sort The sorting string.
 	 *
 	 * @return array
 	 */
@@ -92,13 +92,13 @@ trait ApiUtils {
 		}
 		$sort_items = explode( ',', $sort );
 		foreach ( $sort_items as $item ) {
-			if ( strpos( $item, '+' ) == false ) {
+			if ( strpos( $item, '+' ) === false ) {
 				continue;
 			}
 			list( $field, $order ) = explode( '+', $item );
-			$sort_array[] = [
-				"field" => $field,
-				"order" => strtoupper( $order ) == 'DESC' ? 'DESC' : 'ASC',
+			$sort_array[]          = [
+				'field' => $field,
+				'order' => strtoupper( $order ) === 'DESC' ? 'DESC' : 'ASC',
 			];
 		}
 
@@ -113,7 +113,7 @@ trait ApiUtils {
 	public function get_collection_params(): array {
 		return [
 			'page'     => [
-				'description'       => __( 'Current page of the collection.' ),
+				'description'       => 'Current page of the collection.',
 				'type'              => 'integer',
 				'default'           => 1,
 				'minimum'           => 1,
@@ -121,7 +121,7 @@ trait ApiUtils {
 				'validate_callback' => 'rest_validate_request_arg',
 			],
 			'per_page' => [
-				'description'       => __( 'Maximum number of items to be returned in result set.' ),
+				'description'       => 'Maximum number of items to be returned in result set.',
 				'type'              => 'integer',
 				'default'           => 10,
 				'minimum'           => 1,
@@ -130,13 +130,13 @@ trait ApiUtils {
 				'validate_callback' => 'rest_validate_request_arg',
 			],
 			'search'   => [
-				'description'       => __( 'Limit results to those matching a string.' ),
+				'description'       => 'Limit results to those matching a string.',
 				'type'              => 'string',
 				'sanitize_callback' => 'sanitize_text_field',
 				'validate_callback' => 'rest_validate_request_arg',
 			],
 			'sort'     => [
-				'description'       => __( 'Sorting order. Example: title+DESC,author+ASC' ),
+				'description'       => 'Sorting order. Example: title+DESC,author+ASC',
 				'type'              => 'string',
 				'sanitize_callback' => [ $this, 'sanitize_sorting_data' ],
 				'validate_callback' => 'rest_validate_request_arg',

@@ -11,6 +11,9 @@ use WP_Term_Query;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * TermModel class
+ */
 abstract class TermModel implements JsonSerializable {
 
 	/**
@@ -33,6 +36,8 @@ abstract class TermModel implements JsonSerializable {
 	protected $meta_data = [];
 
 	/**
+	 * List of meta fields
+	 *
 	 * @var array
 	 * Example
 	 * [
@@ -47,7 +52,7 @@ abstract class TermModel implements JsonSerializable {
 	protected static $meta_fields = [];
 
 	/**
-	 * Check if meta data read
+	 * Check if metadata read
 	 *
 	 * @var bool
 	 */
@@ -56,13 +61,13 @@ abstract class TermModel implements JsonSerializable {
 	/**
 	 * Class constructor.
 	 *
-	 * @param int|WP_Term|null $term
+	 * @param int|WP_Term|null $term The term id or term object or null.
 	 */
 	public function __construct( $term = null ) {
 		if ( is_numeric( $term ) || $term instanceof WP_Term ) {
 			$term = get_term( $term, static::TAXONOMY );
 
-			if ( $term->taxonomy == static::TAXONOMY ) {
+			if ( static::TAXONOMY === $term->taxonomy ) {
 				$this->term = $term;
 				$this->read_meta_data();
 			}
@@ -74,7 +79,7 @@ abstract class TermModel implements JsonSerializable {
 	 *
 	 * @return array
 	 */
-	public function to_array() {
+	public function to_array(): array {
 		return [
 			'id'    => $this->get_id(),
 			'name'  => $this->get_name(),
@@ -88,7 +93,7 @@ abstract class TermModel implements JsonSerializable {
 	 *
 	 * @return int
 	 */
-	public function get_id() {
+	public function get_id(): int {
 		return $this->term->term_id;
 	}
 
@@ -97,7 +102,7 @@ abstract class TermModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_name() {
+	public function get_name(): string {
 		return $this->term->name;
 	}
 
@@ -106,7 +111,7 @@ abstract class TermModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_slug() {
+	public function get_slug(): string {
 		return $this->term->slug;
 	}
 
@@ -115,19 +120,19 @@ abstract class TermModel implements JsonSerializable {
 	 *
 	 * @return int
 	 */
-	public function get_count() {
+	public function get_count(): int {
 		return $this->term->count;
 	}
 
 	/**
 	 * Get meta data
 	 *
-	 * @param string $key
-	 * @param mixed  $default
+	 * @param string $key The meta key.
+	 * @param mixed  $default The default value.
 	 *
 	 * @return mixed
 	 */
-	public function get_meta( $key, $default = '' ) {
+	public function get_meta( string $key, $default = '' ) {
 		if ( isset( $this->meta_data[ $key ] ) ) {
 			return $this->meta_data[ $key ];
 		}
@@ -145,8 +150,10 @@ abstract class TermModel implements JsonSerializable {
 	}
 
 	/**
-	 * @param int    $image_id
-	 * @param string $size
+	 * Get image data.
+	 *
+	 * @param int    $image_id The image id.
+	 * @param string $size The image size.
 	 *
 	 * @return array|ArrayObject
 	 */
@@ -164,18 +171,18 @@ abstract class TermModel implements JsonSerializable {
 			'url'      => $src[0],
 			'width'    => $src[1],
 			'height'   => $src[2],
-			'alt_text' => $alt_text
+			'alt_text' => $alt_text,
 		];
 	}
 
 	/**
 	 * Get query
 	 *
-	 * @param array $args
+	 * @param array $args Term query arguments.
 	 *
 	 * @return WP_Term_Query
 	 */
-	public static function query( array $args = [] ) {
+	public static function query( array $args = [] ): WP_Term_Query {
 		$args['taxonomy'] = static::TAXONOMY;
 
 		return new WP_Term_Query( $args );
@@ -184,20 +191,20 @@ abstract class TermModel implements JsonSerializable {
 	/**
 	 * Method to create a new record
 	 *
-	 * @param string $term
-	 * @param array  $args
+	 * @param string $term The term slug or name to be created.
+	 * @param array  $args Optional arguments.
 	 *
 	 * @return array|WP_Error An array containing the `term_id` and `term_taxonomy_id`, WP_Error otherwise.
 	 */
-	public static function create( $term, array $args = [] ) {
+	public static function create( string $term, array $args = [] ) {
 		return wp_insert_term( $term, static::TAXONOMY, $args );
 	}
 
 	/**
 	 * Method to create a new record
 	 *
-	 * @param int   $term_id
-	 * @param array $args
+	 * @param int   $term_id The term id to be updated.
+	 * @param array $args Term arguments.
 	 *
 	 * @return array|WP_Error An array containing the `term_id` and `term_taxonomy_id`, WP_Error otherwise.
 	 */
@@ -208,22 +215,22 @@ abstract class TermModel implements JsonSerializable {
 	/**
 	 * Delete data
 	 *
-	 * @param int $term_id
+	 * @param int $term_id The term id to be deleted.
 	 *
 	 * @return bool
 	 */
-	public static function delete( $term_id = 0 ) {
+	public static function delete( int $term_id = 0 ): bool {
 		return (bool) wp_delete_term( $term_id, static::TAXONOMY );
 	}
 
 	/**
 	 * Find for a post
 	 *
-	 * @param int $post_id
+	 * @param int $post_id The post id.
 	 *
 	 * @return array
 	 */
-	public static function find_for_post( $post_id ) {
+	public static function find_for_post( int $post_id ): array {
 		$terms = wp_get_post_terms( $post_id, static::TAXONOMY );
 		$data  = [];
 		if ( ! is_wp_error( $terms ) ) {
@@ -240,10 +247,12 @@ abstract class TermModel implements JsonSerializable {
 	}
 
 	/**
-	 * @param string $menu_name
-	 * @param string $name
-	 * @param string $singular_name
-	 * @param array  $args
+	 * Get term arguments.
+	 *
+	 * @param string $menu_name The menu name.
+	 * @param string $name The name in plural form.
+	 * @param string $singular_name The name in singular form.
+	 * @param array  $args Additional arguments.
 	 *
 	 * @return array
 	 */
@@ -252,7 +261,7 @@ abstract class TermModel implements JsonSerializable {
 		string $name = 'Categories',
 		string $singular_name = 'Category',
 		array $args = []
-	) {
+	): array {
 		$l_name = strtolower( $name );
 
 		$labels       = array(
@@ -295,11 +304,11 @@ abstract class TermModel implements JsonSerializable {
 	/**
 	 * Save category fields
 	 *
-	 * @param int    $term_id  Term ID being saved.
+	 * @param int    $term_id Term ID being saved.
 	 * @param string $taxonomy Taxonomy slug.
-	 * @param string $source
+	 * @param string $source Data source. admin-ui or rest-api.
 	 */
-	public static function save_form_fields( $term_id, $taxonomy, $source = 'admin-ui' ) {
+	public static function save_form_fields( int $term_id, string $taxonomy, string $source = 'admin-ui' ) {
 		if ( static::TAXONOMY !== $taxonomy ) {
 			return;
 		}
@@ -308,18 +317,18 @@ abstract class TermModel implements JsonSerializable {
 			'meta_key'          => '',
 			'post_key'          => '',
 			'rest_param'        => '',
-			'sanitize_callback' => 'sanitize_text_field'
+			'sanitize_callback' => 'sanitize_text_field',
 		];
 
 		foreach ( static::$meta_fields as $meta_field ) {
 			$field     = wp_parse_args( $meta_field, $default );
 			$post_key  = ! empty( $field['post_key'] ) ? $field['post_key'] : $field['meta_key'];
-			$field_key = $source == 'rest' ? $field['rest_param'] : $post_key;
+			$field_key = 'rest' === $source ? $field['rest_param'] : $post_key;
 			$meta_key  = $field['meta_key'];
 			if ( empty( $meta_key ) || empty( $field_key ) ) {
 				continue;
 			}
-			$value = isset( $_REQUEST[ $field_key ] ) ? $_REQUEST[ $field_key ] : '';
+			$value = $_REQUEST[ $field_key ] ?? '';
 			if ( isset( $field['sanitize_callback'] ) && is_callable( $field['sanitize_callback'] ) ) {
 				$value = call_user_func( $field['sanitize_callback'], $value );
 			}
@@ -329,6 +338,8 @@ abstract class TermModel implements JsonSerializable {
 	}
 
 	/**
+	 * Specify data which should be serialized to JSON
+	 *
 	 * @inheritDoc
 	 */
 	public function jsonSerialize() {
