@@ -32,6 +32,10 @@ class Testimonial extends PostTypeModel {
 			'sanitize_callback' => 'sanitize_text_field',
 		],
 		[
+			'meta_key'          => '_author_works_for_url',
+			'sanitize_callback' => 'esc_url',
+		],
+		[
 			'meta_key'          => '_author_review_rating',
 			'sanitize_callback' => 'intval',
 		],
@@ -81,6 +85,15 @@ class Testimonial extends PostTypeModel {
 	}
 
 	/**
+	 * Author company url
+	 *
+	 * @return string
+	 */
+	public function get_author_works_for_url(): string {
+		return $this->get_meta( '_author_works_for_url' );
+	}
+
+	/**
 	 * Author review rating
 	 *
 	 * @return int
@@ -102,5 +115,29 @@ class Testimonial extends PostTypeModel {
 		$image = $this->get_thumbnail_image( $size );
 
 		return $image['url'] ?? '';
+	}
+
+	/**
+	 * Get author avatar image
+	 *
+	 * @param string|array $size The image size.
+	 *
+	 * @return string
+	 */
+	public function get_author_image( $size = 'thumbnail' ): string {
+		$thumbnail_id = get_post_thumbnail_id( $this->post->ID );
+
+		return wp_get_attachment_image( $thumbnail_id, $size );
+	}
+
+	/**
+	 * Check if avatar exists
+	 *
+	 * @return bool
+	 */
+	public function has_author_image(): bool {
+		$thumbnail_id = get_post_thumbnail_id( $this->post->ID );
+
+		return (bool) $thumbnail_id;
 	}
 }

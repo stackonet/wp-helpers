@@ -55,8 +55,13 @@ class TestimonialManager {
 	public function testimonial_view(): string {
 		$this->testimonials = Testimonial::find();
 
+		$html = '';
+		foreach ( $this->testimonials as $testimonial ) {
+			$html .= ( new TestimonialView( $testimonial ) )->get_html();
+		}
+
 		// Get FAQs from structured data and add here via JavaScript.
-		return '<div id="stackonet-testimonial-view"></div>';
+		return '<div id="stackonet-testimonial-view">' . $html . '</div>';
 	}
 
 	/**
