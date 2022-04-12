@@ -1,3 +1,13 @@
+#### 1.6.0
+
+* Add phone number validation functionality
+* Add unit testing for classes Validate, Sanitize, etc
+* Update PostTypeModel class.
+* Add FAQs example module.
+* Add Testimonial example module.
+* Update 'RestClient' class, add 'get_debug_info' method.
+* Add multiselect feature for setting page option.
+
 #### 1.5.0
 
 * Add `FormBuilderInterface` class

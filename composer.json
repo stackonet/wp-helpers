@@ -1,7 +1,7 @@
 {
 	"name": "stackonet/wp-helpers",
 	"description": "A WordPress framework for easy development.",
-  "version": "1.5.0",
+  "version": "1.6.0",
 	"type": "library",
 	"keywords": [
 		"wordpress"
