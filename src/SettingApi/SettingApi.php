@@ -108,7 +108,15 @@ class SettingApi {
 			$value   = $input[ $field['id'] ] ?? $options[ $field['id'] ];
 
 			if ( isset( $field['options'] ) && is_array( $field['options'] ) ) {
-				$output_array[ $key ] = in_array( $value, array_keys( $field['options'] ) ) ? $value : $default;
+				if ( isset( $field['multiple'] ) && is_array( $value ) ) {
+					foreach ( $value as $item ) {
+						if ( in_array( $item, array_keys( $field['options'] ) ) ) {
+							$output_array[ $key ][] = $item;
+						}
+					}
+				} else {
+					$output_array[ $key ] = in_array( $value, array_keys( $field['options'] ) ) ? $value : $default;
+				}
 				continue;
 			}
 

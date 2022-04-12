@@ -12,8 +12,14 @@ use WP_Query;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * PostTypeModel class
+ */
 abstract class PostTypeModel implements JsonSerializable {
 
+	/**
+	 * Post type name
+	 */
 	const POST_TYPE = 'post';
 
 	/**
@@ -31,6 +37,8 @@ abstract class PostTypeModel implements JsonSerializable {
 	protected $meta_data = [];
 
 	/**
+	 * Meta fields
+	 *
 	 * @var array
 	 * Example
 	 * [
@@ -45,7 +53,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	protected static $meta_fields = [];
 
 	/**
-	 * Check if meta data read
+	 * Check if metadata read
 	 *
 	 * @var bool
 	 */
@@ -54,12 +62,12 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Class constructor.
 	 *
-	 * @param null|int|WP_Post $post
+	 * @param null|int|WP_Post $post The post object or post id or null.
 	 */
 	public function __construct( $post = null ) {
 		$post = get_post( $post );
 
-		if ( $post->post_type == static::POST_TYPE ) {
+		if ( static::POST_TYPE === $post->post_type ) {
 			$this->post = $post;
 			$this->read_meta_data();
 		}
@@ -67,9 +75,10 @@ abstract class PostTypeModel implements JsonSerializable {
 
 	/**
 	 * Get WP_Post
+	 *
 	 * @return WP_Post|null
 	 */
-	public function get_post() {
+	public function get_post(): ?WP_Post {
 		return $this->post;
 	}
 
@@ -78,7 +87,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	public function is_valid() {
+	public function is_valid(): bool {
 		return $this->get_post() instanceof WP_Post;
 	}
 
@@ -87,7 +96,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return array
 	 */
-	public function to_array() {
+	public function to_array(): array {
 		return [
 			'id'      => $this->get_id(),
 			'title'   => $this->get_title(),
@@ -102,8 +111,8 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return int
 	 */
-	public function get_id() {
-		return intval( $this->post->ID );
+	public function get_id(): int {
+		return $this->post->ID;
 	}
 
 	/**
@@ -111,7 +120,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_title() {
+	public function get_title(): string {
 		return get_the_title( $this->post->ID );
 	}
 
@@ -120,7 +129,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_status() {
+	public function get_status(): string {
 		return $this->post->post_status;
 	}
 
@@ -129,7 +138,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_content() {
+	public function get_content(): string {
 		return apply_filters( 'the_content', $this->post->post_content );
 	}
 
@@ -138,18 +147,18 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_excerpt() {
+	public function get_excerpt(): string {
 		return apply_filters( 'the_excerpt', apply_filters( 'get_the_excerpt', $this->post->post_excerpt, $this->post ) );
 	}
 
 	/**
 	 * Get thumbnail src
 	 *
-	 * @param string $size
+	 * @param string $size The image size.
 	 *
 	 * @return ArrayObject|array
 	 */
-	public function get_thumbnail_image( $size = 'thumbnail' ) {
+	public function get_thumbnail_image( string $size = 'thumbnail' ) {
 		$thumbnail_id = (int) get_post_thumbnail_id( $this->post );
 
 		return self::get_image_data( $thumbnail_id, $size );
@@ -160,7 +169,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_created_at() {
+	public function get_created_at(): string {
 		return $this->post->post_date_gmt;
 	}
 
@@ -169,15 +178,15 @@ abstract class PostTypeModel implements JsonSerializable {
 	 *
 	 * @return string
 	 */
-	public function get_updated_at() {
+	public function get_updated_at(): string {
 		return $this->post->post_modified_gmt;
 	}
 
 	/**
 	 * Get meta data
 	 *
-	 * @param string $key
-	 * @param mixed $default
+	 * @param string $key The meta key.
+	 * @param mixed  $default Default value.
 	 *
 	 * @return mixed
 	 */
@@ -204,8 +213,8 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Get image data
 	 *
-	 * @param int $image_id
-	 * @param string $size
+	 * @param int    $image_id The image id.
+	 * @param string $size The image size.
 	 *
 	 * @return array|ArrayObject
 	 */
@@ -223,24 +232,29 @@ abstract class PostTypeModel implements JsonSerializable {
 			'url'      => $src[0],
 			'width'    => $src[1],
 			'height'   => $src[2],
-			'alt_text' => $alt_text
+			'alt_text' => $alt_text,
 		];
 	}
 
 	/**
 	 * Get query
 	 *
-	 * @param array $args
+	 * @param array $args array of query arguments.
 	 *
 	 * @return WP_Query
 	 */
-	public static function query( array $args = [] ) {
-		$args = wp_parse_args( $args, array(
-			'posts_per_page' => - 1,
-			'post_status'    => 'publish',
-			'order'          => 'DESC',
-			'orderby'        => 'date',
-		) );
+	public static function query( array $args = [] ): WP_Query {
+		$args = wp_parse_args(
+			$args,
+			[
+				'posts_per_page' => - 1,
+				'post_status'    => 'publish',
+				'orderby'        => [
+					'menu_order' => 'ASC',
+					'date'       => 'DESC',
+				],
+			]
+		);
 
 		$args['post_type'] = static::POST_TYPE;
 
@@ -251,11 +265,11 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Find data
 	 *
-	 * @param array $args
+	 * @param array $args array of query arguments.
 	 *
 	 * @return static[]|array
 	 */
-	public static function find( array $args = [] ) {
+	public static function find( array $args = [] ): array {
 		$query = static::query( $args );
 		$posts = $query->get_posts();
 		$items = [];
@@ -269,7 +283,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Method to create a new record
 	 *
-	 * @param array $data
+	 * @param array $data An array of elements that make up a post to insert.
 	 *
 	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
 	 */
@@ -282,7 +296,7 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Method to create a new record
 	 *
-	 * @param array $data
+	 * @param array $data An array of elements that make up a post to update.
 	 *
 	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
 	 */
@@ -295,43 +309,43 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Delete data
 	 *
-	 * @param int $id
+	 * @param int $id The post id.
 	 *
 	 * @return bool
 	 */
-	public static function delete( $id = 0 ) {
+	public static function delete( int $id = 0 ): bool {
 		return (bool) wp_delete_post( $id, true );
 	}
 
 	/**
 	 * Send an item to trash
 	 *
-	 * @param int $id
+	 * @param int $id The post id.
 	 *
 	 * @return bool
 	 */
-	public static function trash( $id = 0 ) {
+	public static function trash( int $id = 0 ): bool {
 		return (bool) wp_trash_post( $id );
 	}
 
 	/**
 	 * Restore an item from trash
 	 *
-	 * @param int $id
+	 * @param int $id The post id.
 	 *
 	 * @return bool
 	 */
-	public static function restore( $id = 0 ) {
+	public static function restore( int $id = 0 ): bool {
 		return (bool) wp_untrash_post( $id );
 	}
 
 	/**
 	 * Get post type args
 	 *
-	 * @param string $menu_name
-	 * @param string $name
-	 * @param string $singular_name
-	 * @param array $args
+	 * @param string $menu_name The menu name.
+	 * @param string $name The name in plural form.
+	 * @param string $singular_name The name in singular form.
+	 * @param array  $args Additional arguments.
 	 *
 	 * @return array
 	 */
@@ -340,7 +354,7 @@ abstract class PostTypeModel implements JsonSerializable {
 		string $name = 'Posts',
 		string $singular_name = 'Post',
 		array $args = []
-	) {
+	): array {
 		$l_name          = strtolower( $name );
 		$l_singular_name = strtolower( $singular_name );
 
@@ -400,14 +414,14 @@ abstract class PostTypeModel implements JsonSerializable {
 	/**
 	 * Save meta data
 	 *
-	 * @param WP_Post|int $post
-	 * @param string $source
-	 * @param array $values
+	 * @param WP_Post|int $post The post id or post object.
+	 * @param string      $source Data source. admin-ui or rest-api.
+	 * @param array       $values The values to be saved.
 	 */
-	public static function save_meta_data( $post, $source = 'admin-ui', array $values = [] ) {
+	public static function save_meta_data( $post, string $source = 'admin-ui', array $values = [] ) {
 		$post = get_post( $post );
 
-		if ( $post->post_type != static::POST_TYPE ) {
+		if ( static::POST_TYPE !== $post->post_type ) {
 			return;
 		}
 
@@ -419,18 +433,18 @@ abstract class PostTypeModel implements JsonSerializable {
 			'meta_key'          => '',
 			'post_key'          => '',
 			'rest_param'        => '',
-			'sanitize_callback' => [ Sanitize::class, 'deep' ]
+			'sanitize_callback' => [ Sanitize::class, 'deep' ],
 		];
 
 		foreach ( static::$meta_fields as $meta_field ) {
 			$field     = wp_parse_args( $meta_field, $default );
 			$post_key  = ! empty( $field['post_key'] ) ? $field['post_key'] : $field['meta_key'];
-			$field_key = $source == 'rest' ? $field['rest_param'] : $post_key;
+			$field_key = 'rest' === $source ? $field['rest_param'] : $post_key;
 			$meta_key  = $field['meta_key'];
 			if ( empty( $meta_key ) || empty( $field_key ) ) {
 				continue;
 			}
-			$value = isset( $values[ $field_key ] ) ? $values[ $field_key ] : '';
+			$value = $values[ $field_key ] ?? '';
 			if ( isset( $field['sanitize_callback'] ) && is_callable( $field['sanitize_callback'] ) ) {
 				$value = call_user_func( $field['sanitize_callback'], $value );
 			}
@@ -440,6 +454,8 @@ abstract class PostTypeModel implements JsonSerializable {
 	}
 
 	/**
+	 * Specify data which should be serialized to JSON
+	 *
 	 * @inheritDoc
 	 */
 	public function jsonSerialize() {

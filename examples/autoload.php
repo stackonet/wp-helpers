@@ -1,5 +1,8 @@
 <?php
 
+use Stackonet\WP\Examples\Faqs\FaqManager;
+use Stackonet\WP\Examples\Testimonial\TestimonialManager;
+
 // If this file is called directly, abort.
 defined( 'ABSPATH' ) || exit;
 
@@ -27,3 +30,11 @@ spl_autoload_register( function ( $class ) {
 		require $file;
 	}
 } );
+
+add_action(
+	'plugins_loaded',
+	function () {
+		FaqManager::init();
+		TestimonialManager::init();
+	}
+);

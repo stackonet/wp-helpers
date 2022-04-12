@@ -14,6 +14,8 @@ class QueryBuilder {
 	use TableInfo;
 
 	/**
+	 * The query data
+	 *
 	 * @var array
 	 */
 	protected $query = [
@@ -38,7 +40,7 @@ class QueryBuilder {
 	 * @return static
 	 */
 	public static function table( string $table ): QueryBuilder {
-		$query_builder = new static;
+		$query_builder = new static();
 		$table         = $query_builder->get_table_name( $table );
 
 		$query_builder->query['table']       = $table[0];
@@ -126,7 +128,7 @@ class QueryBuilder {
 			$table = $this->query['table'];
 		}
 
-		$sql = "";
+		$sql = '';
 		if ( 'DELETE' == $this->query['mode'] ) {
 			$sql .= "DELETE FROM {$table}";
 		} else {
@@ -136,29 +138,29 @@ class QueryBuilder {
 
 		if ( count( $this->query['join'] ) ) {
 			foreach ( $this->query['join'] as $join ) {
-				$_alias = ! empty( $join['table_alias'] ) ? "AS {$join['table_alias']}" : "";
+				$_alias = ! empty( $join['table_alias'] ) ? "AS {$join['table_alias']}" : '';
 				$sql    .= " {$join['type']} JOIN {$join['table']} {$_alias} ON {$join['first_column']} = {$join['second_column']}";
 			}
 		}
 
 		if ( $where ) {
-			$sql .= " WHERE " . join( ' AND ', $where );
+			$sql .= ' WHERE ' . join( ' AND ', $where );
 		}
 
 		if ( 'SELECT' == $this->query['mode'] ) {
 			if ( $this->query['group_by'] ) {
-				$sql .= " GROUP BY " . implode( ", ", $this->query['group_by'] );
+				$sql .= ' GROUP BY ' . implode( ', ', $this->query['group_by'] );
 			}
 			if ( $order_by ) {
-				$sql .= " ORDER BY " . implode( ", ", $order_by );
+				$sql .= ' ORDER BY ' . implode( ', ', $order_by );
 			} elseif ( $this->query['random_order'] ) {
-				$sql .= " ORDER BY RAND()";
+				$sql .= ' ORDER BY RAND()';
 			}
 			if ( $this->query['limit'] > 0 ) {
-				$sql .= " LIMIT " . intval( $this->query['limit'] );
+				$sql .= ' LIMIT ' . intval( $this->query['limit'] );
 
 				if ( $this->query['offset'] >= 0 ) {
-					$sql .= " OFFSET " . intval( $this->query['offset'] );
+					$sql .= ' OFFSET ' . intval( $this->query['offset'] );
 				}
 			}
 		}
@@ -248,20 +250,21 @@ class QueryBuilder {
 			if ( in_array( $operator, [ 'BETWEEN', 'NOT BETWEEN' ] ) ) {
 				$sql = $wpdb->prepare(
 					"{$item['column']} {$operator} {$item['data_format']} AND {$item['data_format']}",
-					$value[0], $value[1]
+					$value[0],
+					$value[1]
 				);
 			}
-			if ( in_array( $operator, [ 'IN', 'NOT IN', ] ) ) {
-				if ( 'string' == $item['type'] ) {
-					$sql = "{$item['column']} {$operator}('" . implode( ",'", $value ) . "')";
+			if ( in_array( $operator, [ 'IN', 'NOT IN' ], true ) ) {
+				if ( 'string' === $item['type'] ) {
+					$sql = "{$item['column']} {$operator}('" . implode( "','", $value ) . "')";
 				} else {
-					$sql = "{$item['column']} {$operator}(" . implode( ", ", $value ) . ")";
+					$sql = "{$item['column']} {$operator}(" . implode( ', ', $value ) . ')';
 				}
 			}
 		} else {
 			if ( is_null( $value ) || 'NULL' === $value ) {
 				$sql = "{$item['column']} IS NULL";
-			} elseif ( 'NOT NULL' == strtoupper( $value ) ) {
+			} elseif ( 'NOT NULL' === strtoupper( $value ) ) {
 				$sql = "{$item['column']} IS NOT NULL";
 			} else {
 				$sql = $wpdb->prepare( "{$item['column']} {$operator} {$item['data_format']}", $value );
@@ -363,7 +366,10 @@ class QueryBuilder {
 	public function order_by( string $column, string $order = 'DESC' ): QueryBuilder {
 		$table_info = static::get_table_info( $this->query['table'] );
 		if ( array_key_exists( $column, $table_info ) && in_array( $order, [ 'ASC', 'DESC' ] ) ) {
-			$this->query['order_by'][] = [ 'column' => $column, 'order' => $order ];
+			$this->query['order_by'][] = [
+				'column' => $column,
+				'order'  => $order,
+			];
 		}
 
 		return $this;
@@ -466,7 +472,8 @@ class QueryBuilder {
 		$args  = func_get_args();
 		$where = [];
 		if ( is_array( $args[0] ) ) {
-			$where['relation'] = isset( $args[1] ) && in_array( $args[1], [ 'AND', 'OR' ] ) ? $args[1] : 'AND';;
+			$where['relation'] = ( isset( $args[1] ) && 'OR' === $args[1] ) ? 'OR' : 'AND';
+
 			foreach ( $args[0] as $item ) {
 				if ( count( $item ) < 2 ) {
 					continue;
